@@ -196,7 +196,7 @@ let muted=false;
 // Multi-round
 let maxRounds=1,curRound=1,cumScores=[];
 // Tiebreaker
-let tbMode=false,origPl=null,origCumScores=null,tbRound=0;
+let tbMode=false,origPl=null,origCumScores=null,tbRound=0,origColors=null;
 // BGM
 let bgmOsc=null,bgmGain=null,bgmLfo=null;
 
@@ -470,7 +470,7 @@ function startAll(){
   perP=+$('nS').value;mxB=perP*pl.length;
   const cv=+$('cS').value;gP=CL[cv].g;bP=CL[cv].b;
   maxRounds=+$('rS').value;curRound=1;
-  tbRound=0;tbMode=false;origPl=null;origCumScores=null;
+  tbRound=0;tbMode=false;origPl=null;origCumScores=null;origColors=null;
   cumScores=pl.map(()=>0);
   $('maxR').textContent=maxRounds;
   $('setup').style.display='none';$('game').style.display='flex';
@@ -494,7 +494,11 @@ function startRound(){
 function startTiebreaker(winners){
   tbRound++;
   // Save original state on first tiebreaker
-  if(!origPl){origPl=[...pl];origCumScores=[...cumScores];}
+  if(!origPl){
+    // CRITICAL: Add current round scores BEFORE saving
+    cu.forEach((c,i)=>{cumScores[i]+=c.fl;});
+    origPl=[...pl];origCumScores=[...cumScores];origColors=[...C];
+  }
   
   // Extract tied player names and colors
   const tbNames=winners.map(w=>w.nm);
@@ -873,19 +877,24 @@ function animate(){phys();draw();if(!en)aI=requestAnimationFrame(animate);}
 function sR(){if(!wn)return;iS=false;$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');
 
 let wasTB=false;
+let tbScoreInfo=null;// store TB result for display
 // If tiebreaker mode, restore original players
 if(tbMode){
   wasTB=true;
   const tbWinnerNm=wn.nm;const tbWinnerCl=wn.cl;
   const tbWinnerTied=wn.tied;
+  // Save tiebreaker scores for display
+  tbScoreInfo={};
+  cu.forEach(c=>{tbScoreInfo[c.nm]=c.fl;});
   // Find winner's original score from cumScores
-  const origIdx=origPl.indexOf(tbWinnerNm);
+  const origIdx=origPl.findIndex(n=>n.trim()===tbWinnerNm);
   const origScore=origIdx>=0?origCumScores[origIdx]:0;
-  // Restore original player list
+  // Restore original player list and colors
   pl=origPl;cumScores=origCumScores;
+  if(origColors){for(let i=0;i<origColors.length;i++)C[i]=origColors[i];}
   // Set winner with correct score
   wn={nm:tbWinnerNm,cl:tbWinnerCl,fl:origScore,tied:tbWinnerTied};
-  tbMode=false;origPl=null;origCumScores=null;
+  tbMode=false;origPl=null;origCumScores=null;origColors=null;
   
   // Restore game settings
   perP=+$('nS').value;mxB=perP*pl.length;const cv3=+$('cS').value;gP=CL[cv3].g;bP=CL[cv3].b;
@@ -894,22 +903,37 @@ if(tbMode){
 // Save round scores (skip if from tiebreaker)
 if(!wasTB){cu.forEach((c,i)=>{if(i<cumScores.length)cumScores[i]+=c.fl;});}
 $('rs').style.display='block';
+
+// Winner name display
 if(wn.tied){
   $('wN').textContent=wn.tied.map(w=>w.nm).join(' & ');
   $('wN').style.color='#FFD700';
 }else{
   $('wN').textContent=wn.nm;$('wN').style.color=wn.cl;
 }
-$('wSc').textContent=`${wn.fl} drops`;
 
-// Scoreboard: use cumScores for full player list if coming from tiebreaker
+// Score display — show TB result if applicable
+if(wasTB&&tbScoreInfo){
+  const tbScores=Object.entries(tbScoreInfo).map(([nm,sc])=>`${nm}:${sc}`).join(' vs ');
+  $('wSc').textContent=`${wn.fl} drops (TB: ${tbScores})`;
+}else{
+  $('wSc').textContent=`${wn.fl} drops`;
+}
+
+// Scoreboard
 if(wasTB){
   const sb=$('scb');sb.innerHTML='';
-  const allPlayers=pl.map((n,i)=>({nm:n.trim(),fl:cumScores[i],cl:C[i%C.length]})).sort((a,b)=>b.fl-a.fl);
+  const allPlayers=pl.map((n,i)=>({nm:n.trim(),fl:cumScores[i],cl:C[i%C.length]})).sort((a,b)=>{
+    if(b.fl!==a.fl)return b.fl-a.fl;
+    // Same score? TB winner ranks higher
+    if(a.nm===wn.nm)return -1;if(b.nm===wn.nm)return 1;
+    return 0;
+  });
   allPlayers.forEach((p,i)=>{
     const isW=p.nm===wn.nm;
+    const tbTag=tbScoreInfo&&tbScoreInfo[p.nm]!==undefined?` (TB:${tbScoreInfo[p.nm]})`:'';
     const r=document.createElement('span');r.className='sbr2';r.style.color=p.cl;r.style.borderColor=isW?p.cl:'#2d2319';r.style.background=isW?p.cl+'15':'transparent';
-    r.textContent=`${i===0?'🥇':i===1?'🥈':i===2?'🥉':' '} ${p.nm}:${p.fl}`;sb.appendChild(r);});
+    r.textContent=`${i===0?'🥇':i===1?'🥈':i===2?'🥉':' '} ${p.nm}:${p.fl}${isW?' ⚡':''}${tbTag}`;sb.appendChild(r);});
 }else{
 const sb=$('scb');sb.innerHTML='';const so=[...cu].sort((a,b)=>b.fl-a.fl);
 so.forEach((c,i)=>{const idx=cu.indexOf(c);const sd=splashDmg[idx]||0;const sdTxt=sd!==0?` (splash:${sd>0?'+':''}${sd})`:'';
@@ -936,14 +960,14 @@ function showFinal(){
 
 function restart(){$('rs').style.display='none';$('roundSum').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');$('nxBtn').style.display='none';
 // Reset tiebreaker
-if(origPl){pl=origPl;}tbMode=false;origPl=null;origCumScores=null;tbRound=0;
+if(origPl){pl=origPl;}tbMode=false;origPl=null;origCumScores=null;origColors=null;tbRound=0;
 // Restore game settings
 perP=+$('nS').value;mxB=perP*pl.length;const cv2=+$('cS').value;gP=CL[cv2].g;bP=CL[cv2].b;
 curRound=1;cumScores=pl.map(()=>0);$('curR').textContent=1;
 iS=false;en=false;cG=GN;stl=0;pa=[];tl=[];pL=-1;fB=false;fBF=0;fBSpawned=false;preMegaLeader=-1;initB();bR();buildCheer();
 countdown(()=>{startRec();startBGM();animate();stD();});}
 function back(){cancelAnimationFrame(aI);clearInterval(dT);stopRec();stopBGM();
-if(origPl){pl=origPl;}tbMode=false;origPl=null;origCumScores=null;tbRound=0;
+if(origPl){pl=origPl;}tbMode=false;origPl=null;origCumScores=null;origColors=null;tbRound=0;
 iS=false;en=false;fB=false;fBF=0;fBSpawned=false;cG=GN;pa=[];resPhase=0;confetti=[];dramaF=0;$('game').style.display='none';$('setup').style.display='block';$('so').style.display='none';$('st2').style.display='none';$('cd').style.display='none';$('roundSum').style.display='none';rP();}
 
 rP();uC();

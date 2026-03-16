@@ -50,7 +50,7 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
 .rl2{position:absolute;right:3px;top:50%;transform:translateY(-50%);font-size:8px}
 #et{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%) scale(0);font-family:'Noto Sans KR',sans-serif;font-size:20px;font-weight:900;pointer-events:none;z-index:10;text-align:center;text-shadow:0 2px 10px rgba(0,0,0,.8);transition:transform .2s cubic-bezier(.34,1.56,.64,1),opacity .3s;opacity:0}
 #et.sh{transform:translate(-50%,-50%) scale(1);opacity:1}
-#so{display:none;position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;border-radius:12px;z-index:5;border:3px solid rgba(239,68,68,.5);animation:bp .6s ease infinite alternate}
+#so{display:none;position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;border-radius:12px;z-index:5;border:4px solid rgba(239,68,68,.8);animation:bp .4s ease infinite alternate;box-shadow:inset 0 0 30px rgba(239,68,68,.15)}
 #st2{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Noto Sans KR',sans-serif;font-size:24px;font-weight:900;color:rgba(239,68,68,.7);letter-spacing:3px;text-transform:uppercase;pointer-events:none;z-index:6;animation:sp .8s ease infinite alternate}
 #cd{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(18,16,14,.95);z-index:20;border-radius:12px;flex-direction:column;align-items:center;justify-content:center}
 .cds{font-family:'Noto Sans KR',sans-serif;font-size:64px;font-weight:900;color:#FFD700;letter-spacing:8px;margin-bottom:16px;opacity:0;transition:opacity .6s;text-shadow:0 0 16px rgba(255,215,0,.5)}
@@ -445,7 +445,14 @@ function continueConfetti(){
 }
 
 // ═══ SLOW / SHAKE ═══
-function chkSl(){if(en||iS)return;if(dr/mxB>=.8){iS=true;cG=GS;clearInterval(dT);dT=setInterval(()=>{if(dr>=mxB){clearInterval(dT);return;}spn();},DS);$('so').style.display='block';$('st2').style.display='block';setBGMTense();}}
+function chkSl(){if(en||iS)return;
+const megaSpawned2=bl.filter(b=>b.tp==='megabomb'||b.tp==='megagold').length;
+const megaNotYet2=fB?Math.max(0,2-megaSpawned2):2;
+const unspawned2=mxB-dr;
+const flying2=bl.filter(b=>b.a).length;
+const totalRemaining=Math.max(0,unspawned2+megaNotYet2+flying2);
+const threshold=Math.max(2,Math.ceil((mxB+2)*0.05));
+if(totalRemaining<=threshold&&totalRemaining>0){iS=true;cG=GS;clearInterval(dT);dT=setInterval(()=>{if(dr>=mxB){clearInterval(dT);return;}spn();},DS);$('st2').style.display='block';setBGMTense();}}
 function shk(){const w=$('gw');w.classList.remove('shake');void w.offsetWidth;w.classList.add('shake');setTimeout(()=>w.classList.remove('shake'),350);vib(80);}
 function csS(ci){cs[ci]={t:12};}
 
@@ -600,10 +607,8 @@ function cE(){if(en)return;
 if(dr>=mxB&&!bl.some(b=>b.a)&&!fB){
   fB=true;fBF=0;fBSpawned=false;stl=0;
   cG=GFB;
-  sT('💥 FINAL DROP!!','#FF4500');shk();sMB();setTimeout(()=>shk(),150);vib(300);
-  tl.push({tp:'final',d:dr,t:'💥 Mega Bomb(-5) & Mega Gold(+5) incoming!!',cl:'#FF4500'});
-  if(!iS){$('so').style.display='block';$('st2').textContent='FINAL DROP';$('st2').style.display='block';}
-  else{$('st2').textContent='FINAL DROP';}
+  // Hide FINAL ROUND text — will show FINAL DROP when mega balls actually appear
+  $('st2').style.display='none';
   setBGMTense();
   return;
 }
@@ -615,6 +620,11 @@ if(fB&&!fBSpawned){
   if(fBF===108){
     // Record leader before mega
     let mx=0;cu.forEach((c,i)=>{if(c.fl>mx){mx=c.fl;preMegaLeader=i;}});
+    // FINAL DROP effect — synced with mega ball appearance!
+    shk();sMB();setTimeout(()=>shk(),150);vib(300);
+    tl.push({tp:'final',d:dr,t:'💥 Mega Bomb(-5) & Mega Gold(+5) incoming!!',cl:'#FF4500'});
+    $('so').style.display='block';
+    $('st2').textContent='FINAL DROP';$('st2').style.display='block';
     // Spawn first mega from drop zone
     if(Math.random()>.5){
       bl.push({x:dropX(),y:-BR*2,vx:(Math.random()-.5)*.15,vy:0,a:true,tr:[],tp:'megabomb'});
@@ -788,7 +798,15 @@ c.fillStyle='#1a1714';c.fillRect(0,0,W,H);
 c.strokeStyle='rgba(255,255,255,0.02)';c.lineWidth=1;for(let i=0;i<W;i+=50){c.beginPath();c.moveTo(i,0);c.lineTo(i,H);c.stroke();}for(let i=0;i<H;i+=50){c.beginPath();c.moveTo(0,i);c.lineTo(W,i);c.stroke();}
 c.fillStyle='rgba(232,146,124,0.15)';c.beginPath();c.moveTo(W/2-70,0);c.lineTo(W/2+70,0);c.lineTo(W/2+45,50);c.lineTo(W/2-45,50);c.closePath();c.fill();
 c.fillStyle='#5a4a3a';c.font='12px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillText('DROP ZONE',W/2,30);
-const rem=mxB-dr;c.fillStyle=iS?'#ef4444':'#5a4a3a';c.font=`${iS?'bold ':''}12px "Noto Sans KR",sans-serif`;c.textAlign='right';c.fillText(`${dr}/${mxB}`,W-10,20);
+// Counter: remaining drops (includes mega balls)
+const megaSpawned=bl.filter(b=>b.tp==='megabomb'||b.tp==='megagold').length;
+const megaNotYet=fB?Math.max(0,2-megaSpawned):2;
+const unspawned=mxB-dr;
+const flying=bl.filter(b=>b.a).length;
+const remaining=Math.max(0,unspawned+megaNotYet+flying);
+c.fillStyle=remaining<=7?'#ef4444':'#5a4a3a';
+c.font=`${remaining<=7?'bold ':''}12px "Noto Sans KR",sans-serif`;
+c.textAlign='right';c.fillText(`${remaining} left`,W-10,20);
 if(iS){const vg=c.createRadialGradient(W/2,H/2,W*.3,W/2,H/2,W*.7);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(100,20,20,0.25)');c.fillStyle=vg;c.fillRect(0,0,W,H);}
 c.fillStyle='rgba(232,146,124,0.12)';c.font='13px "Noto Sans KR",sans-serif';c.textAlign='left';c.fillText('→',4,H/2-60);c.textAlign='right';c.fillText('←',W-4,H/2-60);
 for(let o of ob)dO(c,o);

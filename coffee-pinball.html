@@ -238,8 +238,8 @@ function chk(){$('goB').disabled=!pl.every(n=>n.trim().length>0);}
 // ═══ RANKING ═══
 function bR(){const r=$('rb');r.innerHTML='';cu.forEach((c,i)=>{const d=document.createElement('div');d.className='rr';d.id=`rk${i}`;d.innerHTML=`<div class="rn" style="color:${c.cl}">${c.nm}</div><div class="rt"><div class="rfl" id="rf${i}" style="width:0%;background:${c.cl}"><span class="rl2" id="rl${i}"></span></div></div><div class="rc" id="rc${i}" style="color:${c.cl}">0</div>`;r.appendChild(d);});}
 function uR(){if(!cu.length)return;let mx=0;cu.forEach(c=>{if(c.fl>mx)mx=c.fl;});const so=[...cu.map((_,i)=>i)].sort((a,b)=>cu[b].fl-cu[a].fl);const bM=Math.max(mx,1);
-cu.forEach((c,i)=>{const p=Math.min(c.fl/bM*100,100);const f=$(`rf${i}`),ct=$(`rc${i}`),ld=$(`rl${i}`),rw=$(`rk${i}`);if(f){f.style.width=p+'%';if(iS&&c.fl===mx)f.classList.add('dg');else f.classList.remove('dg');}if(ct)ct.textContent=c.fl;if(ld)ld.textContent=(c.fl===mx&&c.fl>0)?'👑':'';if(rw)rw.style.order=so.indexOf(i);});
-const nL=so[0];if(nL!==pL&&pL!==-1&&cu[nL].fl>0){tl.push({tp:'lead',d:dr,t:`👑 ${cu[nL].nm} takes the lead!`,cl:cu[nL].cl});vib(50);}pL=nL;}
+cu.forEach((c,i)=>{const p=Math.min(c.fl/bM*100,100);const f=$(`rf${i}`),ct=$(`rc${i}`),ld=$(`rl${i}`),rw=$(`rk${i}`);if(f){f.style.width=p+'%';if(iS&&c.fl===mx)f.classList.add('dg');else f.classList.remove('dg');}if(ct)ct.textContent=c.fl;if(ld)ld.textContent=(c.fl===mx&&c.fl>0)?'☕':'';if(rw)rw.style.order=so.indexOf(i);});
+const nL=so[0];if(nL!==pL&&pL!==-1&&cu[nL].fl>0){tl.push({tp:'lead',d:dr,t:`☕ ${cu[nL].nm} takes the lead!`,cl:cu[nL].cl});vib(50);}pL=nL;}
 
 // ═══ CHEER ═══
 function buildCheer(){const ch2=$('cheer');ch2.innerHTML='';cu.forEach((c,i)=>{const b=document.createElement('button');b.className='cbtn';b.style.color=c.cl;b.style.borderColor=c.cl+'80';b.textContent=`${c.nm} cheer!`;b.onclick=b.ontouchstart=()=>{sP(c.x+c.w/2,c.y-10,c.cl,8);sCheer(600+i*100);vib(30);};ch2.appendChild(b);});}
@@ -316,6 +316,11 @@ function dramaticAnim(){
       // Fill glow
       c.fillStyle=wn.cl+'15';c.beginPath();c.arc(scX,scY,95,0,Math.PI*2);c.fill();
       c.shadowBlur=0;
+      // Coffee emoji fading in
+      c.globalAlpha=Math.min(dramaF/60,1);
+      c.font='72px "Noto Sans KR",sans-serif';c.textAlign='center';
+      c.fillStyle='#fff';c.shadowColor='#FFD700';c.shadowBlur=20;
+      c.fillText('☕',scX,scY-130);c.shadowBlur=0;c.globalAlpha=1;
     }
     c.restore();
     
@@ -356,6 +361,10 @@ function dramaticAnim(){
       c.shadowBlur=0;
       // Winner name(s) — 64px, handle ties
       c.textAlign='center';
+      // Coffee emoji above name
+      c.font='72px "Noto Sans KR",sans-serif';
+      c.fillStyle='#fff';c.shadowColor='#FFD700';c.shadowBlur=20;
+      c.fillText('☕',scX,scY-130);c.shadowBlur=0;
       if(wn.tied){
         const names=wn.tied.map(w=>w.nm);
         const fs=names.join(' ').length>8?48:64;
@@ -408,6 +417,10 @@ function continueConfetti(){
     c.strokeStyle=wn.cl;c.lineWidth=3;c.shadowColor=wn.cl;c.shadowBlur=20;
     c.beginPath();c.arc(scX,scY,100,0,Math.PI*2);c.stroke();c.shadowBlur=0;
     c.textAlign='center';
+    // Coffee emoji above name
+    c.font='72px "Noto Sans KR",sans-serif';
+    c.fillStyle='#fff';c.shadowColor='#FFD700';c.shadowBlur=20;
+    c.fillText('☕',scX,scY-130);c.shadowBlur=0;
     if(wn.tied){
       const names=wn.tied.map(w=>w.nm);
       const fs=names.join(' ').length>8?48:64;
@@ -712,7 +725,7 @@ sT(`⭐ ${c.nm} -5!`,'#FFD700');shk();sGd();vib(300);
 if(splashInfo.length){setTimeout(()=>{const st=splashInfo.map(s=>`${s.nm} -${s.amt}`).join(', ');sT(`↔ ${st}!`,'#FFD700');},800);}
 tl.push({tp:'megagold',d:dr,t:`⭐ ${c.nm} -5 (${hd}→${c.fl}) + adj splash`,cl:'#FFD700'});
 let mx2=0,nl=-1;cu.forEach((cc,ii)=>{if(cc.fl>mx2){mx2=cc.fl;nl=ii;}});
-if(nl!==preMegaLeader&&preMegaLeader>=0){setTimeout(()=>{sT('👑 REVERSAL!! '+cu[nl].nm+' takes 1st!','#FFD700');shk();shk();vib(500);},1800);tl.push({tp:'reversal',d:dr,t:`👑 REVERSAL!! ${cu[nl].nm} 1st!`,cl:'#FFD700'});}}
+if(nl!==preMegaLeader&&preMegaLeader>=0){setTimeout(()=>{sT('☕ REVERSAL!! '+cu[nl].nm+' takes 1st!','#FFD700');shk();shk();vib(500);},1800);tl.push({tp:'reversal',d:dr,t:`☕ REVERSAL!! ${cu[nl].nm} 1st!`,cl:'#FFD700'});}}
 else if(b.tp==='megabomb'){c.fl+=5;
 const splashInfo2=[];
 if(ci>0){const adj=cu[ci-1];const amt=2;adj.fl+=amt;splashDmg[ci-1]+=amt;splashInfo2.push({nm:adj.nm,amt,idx:ci-1});
@@ -726,7 +739,7 @@ sT(`💥 ${c.nm} +5!`,'#FF4500');shk();sMB();setTimeout(()=>shk(),200);vib(400);
 if(splashInfo2.length){setTimeout(()=>{const st=splashInfo2.map(s=>`${s.nm} +${s.amt}`).join(', ');sT(`↔ ${st}!`,'#ef4444');shk();},800);}
 tl.push({tp:'megabomb',d:dr,t:`💥 ${c.nm} +5 + adj splash`,cl:'#ef4444'});
 let mx3=0,nl2=-1;cu.forEach((cc,ii)=>{if(cc.fl>mx3){mx3=cc.fl;nl2=ii;}});
-if(nl2!==preMegaLeader&&preMegaLeader>=0){setTimeout(()=>{sT('👑 REVERSAL!! '+cu[nl2].nm+' takes 1st!','#FFD700');shk();shk();vib(500);},1800);tl.push({tp:'reversal',d:dr,t:`👑 REVERSAL!! ${cu[nl2].nm} 1st!`,cl:'#FFD700'});}}
+if(nl2!==preMegaLeader&&preMegaLeader>=0){setTimeout(()=>{sT('☕ REVERSAL!! '+cu[nl2].nm+' takes 1st!','#FFD700');shk();shk();vib(500);},1800);tl.push({tp:'reversal',d:dr,t:`☕ REVERSAL!! ${cu[nl2].nm} 1st!`,cl:'#FFD700'});}}
 else if(b.tp==='bomb'){c.fl+=3;sP(cx,cy,'#ef4444',15);sT(`💣 ${c.nm} +3!`,'#ef4444');shk();sBm();vib(100);tl.push({tp:'bomb',d:dr,t:`💣 ${c.nm} +3!`,cl:'#ef4444'});}
 else{c.fl+=1;sCp();}
 let mx=0;cu.forEach(cc=>{if(cc.fl>mx)mx=cc.fl;});if(c.fl===mx&&c.fl%5===0&&c.fl>0&&b.tp==='normal')shk();c.pf=c.fl;break;}}
@@ -834,7 +847,7 @@ c.restore();
 // Divider lines between cups
 if(i<cu.length-1){c.beginPath();c.moveTo(cup.x+cup.w,cup.y);c.lineTo(cup.x+cup.w,cup.y+cup.h);c.strokeStyle='#3d3229';c.lineWidth=1;c.stroke();}
 // Crown — ensure no blurring from canvas shake or stale alpha
-if(isL){c.save();c.globalAlpha=1;c.shadowBlur=0;const crFs=cup.w<40?20:cup.w<55?26:38;c.font=crFs+'px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#fff';const crX=Math.round(cup.x+cup.w/2+sx);const crY=Math.round(cup.y-8+sy);c.fillText('👑',crX,crY);c.restore();}
+if(isL){c.save();c.globalAlpha=1;c.shadowBlur=0;const crFs=cup.w<40?30:cup.w<55?39:57;c.font=crFs+'px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#fff';const crX=Math.round(cup.x+cup.w/2+sx);const crY=Math.round(cup.y-12+sy);c.fillText('☕',crX,crY);c.restore();}
 // Name — INSIDE cup center
 c.globalAlpha=1;c.shadowBlur=0;
 let nameFs=cup.w<40?12:cup.w<55?15:cup.w<70?17:20;

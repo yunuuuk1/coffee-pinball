@@ -708,21 +708,28 @@ if(b.y+BR>c.y&&b.y<c.y+c.h){
   if(b.x>L+2&&b.x<R-2)inCup=true;
 }
 if(inCup){b.a=false;const cx=c.x+c.w/2,cy=c.y+c.h/2;csS(ci);
-if(b.tp==='gold'){const hd=c.fl;c.fl=Math.max(0,c.fl-3);sP(cx,cy,'#FFD700',20);sT(`🌟 ${c.nm} -3! (${hd}→${c.fl})`,'#FFD700');shk();sGd();vib(100);tl.push({tp:'gold',d:dr,t:`🌟 ${c.nm} -3! (${hd}→${c.fl})`,cl:'#FFD700'});}
-else if(b.tp==='megagold'){const hd=c.fl;c.fl=Math.max(0,c.fl-5);
-// #2: Edge compensation — edge cups get ±3, middle cups get ±2
+if(b.tp==='gold'){const hd=c.fl;
+if(hd===0){sP(cx,cy,'#00BFFF',25);sT(`🛡️ ${c.nm} IMMUNE!`,'#00BFFF');pT(400,.1,'sine',.06);vib(50);tl.push({tp:'immune',d:dr,t:`🛡️ ${c.nm} IMMUNE! (0→0)`,cl:'#00BFFF'});}
+else{c.fl=Math.max(0,c.fl-3);sP(cx,cy,'#FFD700',20);sT(`🌟 ${c.nm} -3! (${hd}→${c.fl})`,'#FFD700');shk();sGd();vib(100);tl.push({tp:'gold',d:dr,t:`🌟 ${c.nm} -3! (${hd}→${c.fl})`,cl:'#FFD700'});}}
+else if(b.tp==='megagold'){const hd=c.fl;
+if(hd===0){
+sP(cx,cy,'#00BFFF',30);sT(`🛡️ ${c.nm} IMMUNE!`,'#00BFFF');pT(400,.1,'sine',.06);vib(50);
+tl.push({tp:'immune',d:dr,t:`🛡️ ${c.nm} MEGA IMMUNE! (0→0)`,cl:'#00BFFF'});
+}else{c.fl=Math.max(0,c.fl-5);}
 const splashInfo=[];
-if(ci>0){const adj=cu[ci-1];const amt=2;const ah=adj.fl;adj.fl=Math.max(0,adj.fl-amt);splashDmg[ci-1]-=amt;splashInfo.push({nm:adj.nm,amt,idx:ci-1});
-// #1: Splash line visual
+if(ci>0){const adj=cu[ci-1];const amt=2;const ah=adj.fl;
+if(ah===0){splashInfo.push({nm:adj.nm,amt:0,idx:ci-1,immune:true});}
+else{adj.fl=Math.max(0,adj.fl-amt);splashDmg[ci-1]-=amt;splashInfo.push({nm:adj.nm,amt,idx:ci-1});}
 splashLines.push({x1:cx,y1:cy,x2:adj.x+adj.w/2,y2:adj.y+adj.h/2,cl:'#FFD700',life:30});
 sP(adj.x+adj.w/2,adj.y,'#FFD700',12);csS(ci-1);}
-if(ci<cu.length-1){const adj=cu[ci+1];const amt=2;const ah=adj.fl;adj.fl=Math.max(0,adj.fl-amt);splashDmg[ci+1]-=amt;splashInfo.push({nm:adj.nm,amt,idx:ci+1});
+if(ci<cu.length-1){const adj=cu[ci+1];const amt=2;const ah=adj.fl;
+if(ah===0){splashInfo.push({nm:adj.nm,amt:0,idx:ci+1,immune:true});}
+else{adj.fl=Math.max(0,adj.fl-amt);splashDmg[ci+1]-=amt;splashInfo.push({nm:adj.nm,amt,idx:ci+1});}
 splashLines.push({x1:cx,y1:cy,x2:adj.x+adj.w/2,y2:adj.y+adj.h/2,cl:'#FFD700',life:30});
 sP(adj.x+adj.w/2,adj.y,'#FFD700',12);csS(ci+1);}
 sP(cx,cy,'#FFD700',30);sP(cx,cy-15,'#FFF8DC',15);
-// #3: Sequential toast — main first, splash after
-sT(`⭐ ${c.nm} -5!`,'#FFD700');shk();sGd();vib(300);
-if(splashInfo.length){setTimeout(()=>{const st=splashInfo.map(s=>`${s.nm} -${s.amt}`).join(', ');sT(`↔ ${st}!`,'#FFD700');},800);}
+if(hd>0){sT(`⭐ ${c.nm} -5!`,'#FFD700');shk();sGd();vib(300);}
+if(splashInfo.length){setTimeout(()=>{const parts=splashInfo.map(s=>s.immune?`🛡️${s.nm}`:`${s.nm} -${s.amt}`).join(', ');sT(`↔ ${parts}!`,splashInfo.some(s=>s.immune)?'#00BFFF':'#FFD700');},800);}
 tl.push({tp:'megagold',d:dr,t:`⭐ ${c.nm} -5 (${hd}→${c.fl}) + adj splash`,cl:'#FFD700'});
 let mx2=0,nl=-1;cu.forEach((cc,ii)=>{if(cc.fl>mx2){mx2=cc.fl;nl=ii;}});
 if(nl!==preMegaLeader&&preMegaLeader>=0){setTimeout(()=>{sT('☕ REVERSAL!! '+cu[nl].nm+' takes 1st!','#FFD700');shk();shk();vib(500);},1800);tl.push({tp:'reversal',d:dr,t:`☕ REVERSAL!! ${cu[nl].nm} 1st!`,cl:'#FFD700'});}}

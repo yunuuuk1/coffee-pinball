@@ -146,7 +146,7 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
     <canvas id="cv"></canvas>
     <div id="so"></div><div id="st2">FINAL ROUND</div>
     <div id="et"></div>
-    <div id="cd"><div class="cds" id="cdS">WW</div><div class="cdn" id="cdN"></div><div class="cdg" id="cdG">DROP!</div></div>
+    <div id="cd"><div class="cds" id="cdS"></div><div class="cdn" id="cdN"></div><div class="cdg" id="cdG">DROP!</div></div>
     <div id="cheer" style="display:none"></div>
   </div>
   <div id="rs">
@@ -451,7 +451,7 @@ function csS(ci){cs[ci]={t:12};}
 
 // ═══ COUNTDOWN ═══
 function countdown(cb){iA();const ov=$('cd'),st=$('cdS'),nm=$('cdN'),go=$('cdG');ov.style.display='flex';st.style.opacity='0';nm.className='cdn';nm.textContent='';go.className='cdg';
-setTimeout(()=>{st.style.opacity='1';},100);
+setTimeout(()=>{if(st.textContent)st.style.opacity='1';else st.style.display='none';},100);
 setTimeout(()=>{nm.textContent='3';nm.className='cdn sh';sCd();},1000);
 setTimeout(()=>{nm.className='cdn';},1400);
 setTimeout(()=>{nm.textContent='2';nm.className='cdn sh';sCd();},1600);
@@ -566,7 +566,7 @@ function startTiebreaker(winners){
     
     bR();buildCheer();
     // Custom countdown text for tiebreaker
-    $('cdS').textContent='⚡ TIEBREAK';
+    $('cdS').textContent='⚡ TIEBREAK';$('cdS').style.display='';
     countdown(()=>{startRec();startBGM();animate();stD();});
   }
 }
@@ -886,7 +886,7 @@ if(tbMode){
   // Set winner with correct score
   wn={nm:tbWinnerNm,cl:tbWinnerCl,fl:origScore,tied:tbWinnerTied};
   tbMode=false;origPl=null;origCumScores=null;
-  $('cdS').textContent='WW';
+  
   // Restore game settings
   perP=+$('nS').value;mxB=perP*pl.length;const cv3=+$('cS').value;gP=CL[cv3].g;bP=CL[cv3].b;
 }
@@ -936,14 +936,14 @@ function showFinal(){
 
 function restart(){$('rs').style.display='none';$('roundSum').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');$('nxBtn').style.display='none';
 // Reset tiebreaker
-if(origPl){pl=origPl;}tbMode=false;origPl=null;origCumScores=null;tbRound=0;$('cdS').textContent='WW';
+if(origPl){pl=origPl;}tbMode=false;origPl=null;origCumScores=null;tbRound=0;
 // Restore game settings
 perP=+$('nS').value;mxB=perP*pl.length;const cv2=+$('cS').value;gP=CL[cv2].g;bP=CL[cv2].b;
 curRound=1;cumScores=pl.map(()=>0);$('curR').textContent=1;
 iS=false;en=false;cG=GN;stl=0;pa=[];tl=[];pL=-1;fB=false;fBF=0;fBSpawned=false;preMegaLeader=-1;initB();bR();buildCheer();
 countdown(()=>{startRec();startBGM();animate();stD();});}
 function back(){cancelAnimationFrame(aI);clearInterval(dT);stopRec();stopBGM();
-if(origPl){pl=origPl;}tbMode=false;origPl=null;origCumScores=null;tbRound=0;$('cdS').textContent='WW';
+if(origPl){pl=origPl;}tbMode=false;origPl=null;origCumScores=null;tbRound=0;
 iS=false;en=false;fB=false;fBF=0;fBSpawned=false;cG=GN;pa=[];resPhase=0;confetti=[];dramaF=0;$('game').style.display='none';$('setup').style.display='block';$('so').style.display='none';$('st2').style.display='none';$('cd').style.display='none';$('roundSum').style.display='none';rP();}
 
 rP();uC();

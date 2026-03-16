@@ -872,21 +872,27 @@ function animate(){phys();draw();if(!en)aI=requestAnimationFrame(animate);}
 
 function sR(){if(!wn)return;iS=false;$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');
 
+let wasTB=false;
 // If tiebreaker mode, restore original players
 if(tbMode){
+  wasTB=true;
   const tbWinnerNm=wn.nm;const tbWinnerCl=wn.cl;
   const tbWinnerTied=wn.tied;
+  // Find winner's original score from cumScores
+  const origIdx=origPl.indexOf(tbWinnerNm);
+  const origScore=origIdx>=0?origCumScores[origIdx]:0;
   // Restore original player list
   pl=origPl;cumScores=origCumScores;
-  // Set winner info
-  wn={nm:tbWinnerNm,cl:tbWinnerCl,fl:0,tied:tbWinnerTied};
+  // Set winner with correct score
+  wn={nm:tbWinnerNm,cl:tbWinnerCl,fl:origScore,tied:tbWinnerTied};
   tbMode=false;origPl=null;origCumScores=null;
-  // Restore WW text
   $('cdS').textContent='WW';
+  // Restore game settings
+  perP=+$('nS').value;mxB=perP*pl.length;const cv3=+$('cS').value;gP=CL[cv3].g;bP=CL[cv3].b;
 }
 
-// Save round scores (skip if from tiebreaker — already saved)
-if(!tbMode){cu.forEach((c,i)=>{if(i<cumScores.length)cumScores[i]+=c.fl;});}
+// Save round scores (skip if from tiebreaker)
+if(!wasTB){cu.forEach((c,i)=>{if(i<cumScores.length)cumScores[i]+=c.fl;});}
 $('rs').style.display='block';
 if(wn.tied){
   $('wN').textContent=wn.tied.map(w=>w.nm).join(' & ');
@@ -895,9 +901,20 @@ if(wn.tied){
   $('wN').textContent=wn.nm;$('wN').style.color=wn.cl;
 }
 $('wSc').textContent=`${wn.fl} drops`;
+
+// Scoreboard: use cumScores for full player list if coming from tiebreaker
+if(wasTB){
+  const sb=$('scb');sb.innerHTML='';
+  const allPlayers=pl.map((n,i)=>({nm:n.trim(),fl:cumScores[i],cl:C[i%C.length]})).sort((a,b)=>b.fl-a.fl);
+  allPlayers.forEach((p,i)=>{
+    const isW=p.nm===wn.nm;
+    const r=document.createElement('span');r.className='sbr2';r.style.color=p.cl;r.style.borderColor=isW?p.cl:'#2d2319';r.style.background=isW?p.cl+'15':'transparent';
+    r.textContent=`${i===0?'🥇':i===1?'🥈':i===2?'🥉':' '} ${p.nm}:${p.fl}`;sb.appendChild(r);});
+}else{
 const sb=$('scb');sb.innerHTML='';const so=[...cu].sort((a,b)=>b.fl-a.fl);
 so.forEach((c,i)=>{const idx=cu.indexOf(c);const sd=splashDmg[idx]||0;const sdTxt=sd!==0?` (splash:${sd>0?'+':''}${sd})`:'';
 const r=document.createElement('span');r.className='sbr2';r.style.color=c.cl;r.style.borderColor=c===wn?c.cl:'#2d2319';r.style.background=c===wn?c.cl+'15':'transparent';r.textContent=`${i===0?'🥇':i===1?'🥈':i===2?'🥉':' '} ${c.nm}:${c.fl}${sdTxt}`;sb.appendChild(r);});
+}
 // Timeline
 const te=$('tl');te.innerHTML='';if(tl.length>0){const h=document.createElement('div');h.style.cssText='font-size:12px;color:#E8927C;font-weight:600;margin-bottom:4px';h.textContent='⚡ Highlights';te.appendChild(h);tl.forEach(ev=>{const it=document.createElement('div');it.className='ti';it.style.color=ev.cl;it.textContent=ev.t;te.appendChild(it);});}
 // Show buttons

@@ -174,7 +174,7 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
     </div>
     <div style="text-align:left;margin-bottom:10px">
       <div style="font-size:12px;color:#7a6a5a;margin-bottom:4px">Your Name</div>
-      <input class="nick-input" id="joinNick" placeholder="e.g. 이도한" maxlength="10" style="width:100%">
+      <input class="nick-input" id="joinNick" placeholder="e.g. Latte Boy" maxlength="10" style="width:100%">
     </div>
     <div class="lobby-actions" style="margin-top:16px">
       <button class="copy-btn" onclick="joinRoom()" id="joinBtn">🚪 Join Room</button>
@@ -199,7 +199,7 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
     </div>
     <div style="text-align:left;margin-bottom:12px">
       <div style="font-size:12px;color:#7a6a5a;margin-bottom:4px">Your Name</div>
-      <input class="nick-input" id="inviteNick" placeholder="e.g. 이도한" maxlength="10" style="width:100%">
+      <input class="nick-input" id="inviteNick" placeholder="e.g. Latte Boy" maxlength="10" style="width:100%">
     </div>
     <button class="menu-btn menu-join" id="inviteJoinBtn" onclick="joinFromInvite()" style="margin:0">🚪 Join Game</button>
     <div style="margin-top:10px">
@@ -214,11 +214,11 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
     <h3 style="color:#22c55e;font-size:18px;margin-bottom:16px">🏠 Create Room</h3>
     <div style="text-align:left;margin-bottom:10px">
       <div style="font-size:12px;color:#7a6a5a;margin-bottom:4px">Your Name</div>
-      <input class="nick-input" id="hostNick" placeholder="e.g. 김연욱" maxlength="10" style="width:100%">
+      <input class="nick-input" id="hostNick" placeholder="e.g. Coffee King" maxlength="10" style="width:100%">
     </div>
     <div style="text-align:left;margin-bottom:10px">
       <div style="font-size:12px;color:#7a6a5a;margin-bottom:4px">Room Name (optional)</div>
-      <input class="nick-input" id="roomName" placeholder="e.g. 개발팀 커피내기" maxlength="20" style="width:100%">
+      <input class="nick-input" id="roomName" placeholder="e.g. Morning Coffee Bet" maxlength="20" style="width:100%">
     </div>
     <div style="font-size:11px;color:#5a4a3a;margin:8px 0;text-align:left">☕ A 6-digit room code will be created automatically.</div>
     <div class="lobby-actions" style="margin-top:12px">
@@ -314,7 +314,7 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
     <button class="br2" id="nxBtn" onclick="nextRound()" style="display:none">Next Round →</button>
     <button class="save-btn" id="saveBtn" onclick="saveRecord()">💾 Save Record</button>
     <button class="br2" id="reBtn" onclick="restart()">Play Again</button>
-    <button class="bb2" onclick="back()">Edit Names</button>
+    <button class="bb2" onclick="back()">🏠 Home</button>
     <button class="bm2" id="muB" onclick="togMute()">🔊</button>
   </div>
 </div>
@@ -1347,12 +1347,16 @@ function listenRoom(){
   roomRef.child('status').on('value',snap=>{
     const status=snap.val();
     if(status==='playing'&&!isHost){
-      // Switch to spectator mode
+      // Switch to spectator mode - hide everything first
       $('lobby').style.display='none';
+      $('invitePage').style.display='none';
+      $('mainMenu').style.display='none';
+      $('joinScreen').style.display='none';
+      $('createScreen').style.display='none';
       showSpectator();
     }
     if(status==='finished'&&!isHost){
-      showSpectatorResult();
+      // Result already handled in updateSpectator
     }
   });
   
@@ -1431,14 +1435,23 @@ async function startRoomGame(){
   
   startRound();
   
-  // Send obstacle layout once (spectators need to draw pins)
-  setTimeout(()=>{
+  // Send obstacle layout immediately (spectators need to draw pins)
+  if(ob.length&&cu.length){
     roomRef.child('layout').set({
       W,H,CUH:40,
       obstacles:ob.map(o=>({x:o.x,y:o.y,r:o.r,s:o.s,rt:o.rt,pt:o.pt})),
       cups:cu.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h}))
     });
-  },500);
+  }else{
+    // Fallback: retry after init
+    setTimeout(()=>{
+      roomRef.child('layout').set({
+        W,H,CUH:40,
+        obstacles:ob.map(o=>({x:o.x,y:o.y,r:o.r,s:o.s,rt:o.rt,pt:o.pt})),
+        cups:cu.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h}))
+      });
+    },300);
+  }
   
   // Sync game state every 10 frames (~6x/sec)
   let syncF=0;
@@ -1481,19 +1494,42 @@ let specLayout=null,specBalls=[],specCups=[],specPhaseText='',specRemaining=0,sp
 
 function showSpectator(){
   $('lobby').style.display='none';
+  $('invitePage').style.display='none';
+  $('mainMenu').style.display='none';
   $('game').style.display='flex';
-  const gw=$('gw');
-  // Use the same canvas!
-  const cv=$('cv');cv.width=500;cv.height=cv.height||700;
   
-  // Load layout from Firebase (pins + cups)
-  if(roomRef){
+  // Hide host-only UI
+  $('rs').style.display='none';
+  $('roundSum').style.display='none';
+  const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
+  $('rinfo').style.display='none';
+  
+  const cv=$('cv');cv.width=500;cv.height=700;
+  const c=cv.getContext('2d');
+  
+  // Show loading on canvas
+  c.fillStyle='#1a1714';c.fillRect(0,0,500,700);
+  c.font='18px "Noto Sans KR",sans-serif';c.textAlign='center';
+  c.fillStyle='#E8927C';c.fillText('🎮 Connecting to game...',250,350);
+  
+  // Load layout from Firebase (retry until available)
+  function tryLoadLayout(){
+    if(!roomRef)return;
     roomRef.child('layout').once('value').then(snap=>{
       specLayout=snap.val();
-      if(specLayout){cv.width=specLayout.W;cv.height=specLayout.H;}
-      startSpecRender();
+      if(specLayout){
+        cv.width=specLayout.W;cv.height=specLayout.H;
+        startSpecRender();
+      }else{
+        // Layout not ready yet, retry
+        c.fillStyle='#1a1714';c.fillRect(0,0,500,700);
+        c.font='16px "Noto Sans KR",sans-serif';c.textAlign='center';
+        c.fillStyle='#7a6a5a';c.fillText('⏳ Waiting for host to start...',250,350);
+        setTimeout(tryLoadLayout,1000);
+      }
     });
   }
+  tryLoadLayout();
 }
 
 function startSpecRender(){

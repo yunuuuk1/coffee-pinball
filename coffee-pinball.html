@@ -1660,15 +1660,9 @@ function startSpecCanvas(){
     // Arrow guides (matches host)
     c.fillStyle='rgba(232,146,124,0.12)';c.font='13px "Noto Sans KR",sans-serif';c.textAlign='left';c.fillText('→',4,H/2-60);c.textAlign='right';c.fillText('←',W-4,H/2-60);
     
-    // Pins (with type colors + glow)
+    // Pins (use host's dO function for identical shapes + flash)
     if(specLayout.obstacles){
-      const pColors={normal:{fill:'#3d3530',stroke:'#4a4035'},bumper:{fill:'#4a1a1a',stroke:'#ef4444'},slow:{fill:'#1a2a4a',stroke:'#4a9eed'},redirect:{fill:'#1a3a1a',stroke:'#22c55e'}};
-      specLayout.obstacles.forEach(o=>{
-        const pc=pColors[o.pt||'normal'];
-        c.fillStyle=pc.fill;c.beginPath();c.arc(o.x,o.y,o.r*.8,0,Math.PI*2);c.fill();
-        c.strokeStyle=pc.stroke;c.lineWidth=o.pt==='normal'?.8:1.2;c.stroke();
-        if(o.pt!=='normal'){c.save();c.globalAlpha=.15;c.beginPath();c.arc(o.x,o.y,o.r+3,0,Math.PI*2);c.fillStyle=pc.stroke;c.fill();c.restore();}
-      });
+      specLayout.obstacles.forEach(o=>{dO(c,o);});
     }
     
     // Funnel lines
@@ -1881,11 +1875,14 @@ function updateSpectator(gs){
   else if(specPh==='slowmo'){$('st2').textContent='FINAL ROUND';$('st2').style.display='block';}
   else{$('st2').style.display='none';}
   
-  // Event toast: use same #et HTML overlay (hide during result)
+  // Event toast: use same #et HTML overlay (hide during result, auto-fade like host)
   if(specResPhase===0&&gs.lastEvent&&gs.lastEvent!==specLastEv){
     specLastEv=gs.lastEvent;
     const e=$('et');e.style.display='';e.textContent=gs.lastEvent;e.style.color='#FFD700';
     e.classList.remove('sh');void e.offsetWidth;e.classList.add('sh');
+    // Auto-hide after 1.2s (same as host sT function)
+    clearTimeout(window._specToastTimer);
+    window._specToastTimer=setTimeout(()=>{e.classList.remove('sh');},1200);
   }
   // Sync balls — snap to server positions + adopt velocity for local prediction
   if(gs.balls){

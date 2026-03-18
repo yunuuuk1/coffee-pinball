@@ -1619,21 +1619,26 @@ function startSpecCanvas(){
   
   function dS(){
     if(!specLayout){specAnim=requestAnimationFrame(dS);return;}
-    try{
     const W=specLayout.W,H=specLayout.H;
+    
+    // CRITICAL: Reset canvas transform every frame (prevents accumulated offset from errors)
+    c.setTransform(1,0,0,1,0,0);
     
     // During countdown: just draw dark background (matches host — no game elements visible)
     if(specCountdown&&specCountdown!=='null'&&specCountdown!==null){
       c.fillStyle='#1a1714';c.fillRect(0,0,W,H);
       specAnim=requestAnimationFrame(dS);return;
     }
+    
+    try{
     const isMegaPhase=specPh==='final';
     const isSlowPhase=specPh==='slowmo';
-    const isSM=isSlowPhase||isMegaPhase;// slowmo active flag (used by funnel + cups)
+    const isSM=isSlowPhase||isMegaPhase;
     const ins=8;
     
     // === DRAMATIC RESULT — clean canvas like host's continueConfetti() ===
     if(specResPhase>=1){
+      c.setTransform(1,0,0,1,0,0);// Reset any shake before result
       specDramaF++;
       const scX=W/2,scY=H/2-20;
       
@@ -1738,8 +1743,8 @@ function startSpecCanvas(){
     specBalls=specBalls.filter(b=>!b.dead);
     
     // === RENDER (matches host draw() exactly) ===
-    // Camera shake (synced from host)
-    if(specShaking){c.save();c.translate(Math.round((Math.random()-.5)*6),Math.round((Math.random()-.5)*4));}
+    // Camera shake (synced from host) — use setTransform to avoid save/restore imbalance
+    if(specShaking){c.setTransform(1,0,0,1,Math.round((Math.random()-.5)*6),Math.round((Math.random()-.5)*4));}
     
     c.fillStyle='#1a1714';c.fillRect(0,0,W,H);
     // Grid
@@ -1840,7 +1845,7 @@ function startSpecCanvas(){
     // Phase overlay, countdown, border, toast — all handled by HTML overlays in updateSpectator()
     // (uses same #cd, #so, #st2, #et as host for identical CSS animations)
     
-    if(specShaking)c.restore();
+    // (shake reset happens at start of next frame via setTransform)
     
     // Red border, countdown, FINAL text, event toast — all via HTML overlays (identical to host)
     

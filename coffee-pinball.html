@@ -10,7 +10,7 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yunuuuk1.github.io/coffee-pinball/coffee-pinball.html">
 <meta name="description" content="Coffee Pinball — Shall we? Join the coffee bet game! ☕">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet"></noscript>
 <script>
 // Failsafe: if anything crashes, show mainMenu
@@ -177,10 +177,10 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
 </style>
 </head>
 <body>
-<div class="hdr"><h1>☕ Coffee Pinball 🔮</h1><div class="dv"></div></div>
+<div class="hdr" style="display:block;text-align:center;padding:18px 20px 4px"><h1 style="font-size:28px;font-weight:900;color:#e8d5c4">☕ Coffee Pinball 🔮</h1><div class="dv" style="width:50px;height:2px;background:linear-gradient(90deg,transparent,#E8927C,transparent);margin:8px auto"></div></div>
 
 <!-- ═══ MAIN MENU ═══ -->
-<div id="mainMenu">
+<div id="mainMenu" style="display:block">
   <button class="menu-btn menu-solo" onclick="goSolo()">🎮 Solo Play<div class="menu-sub">Play offline with friends</div></button>
   <button class="menu-btn menu-create" onclick="showCreateRoom()">🏠 Create Room<div class="menu-sub">Host a game & invite others</div></button>
   <button class="menu-btn menu-join" onclick="showJoinScreen()">🚪 Join Room<div class="menu-sub">Enter with invite code</div></button>
@@ -374,12 +374,6 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
 <button class="cheer-btn" id="cheerBtn" onclick="sendCheer()">👏</button>
 <div class="cheer-count" id="cheerCount">👏 0</div>
 
-<!-- External scripts AFTER HTML so page renders first -->
-
-<!-- These load AFTER HTML renders (non-render-blocking) -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="console.warn('Chart.js failed')"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js" onerror="console.warn('Firebase app failed')"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js" onerror="console.warn('Firebase DB failed')"></script>
 <script>
 // Safety: if nothing shows within 2 seconds, force mainMenu visible
 setTimeout(function(){
@@ -1977,17 +1971,36 @@ const firebaseConfig = {
   messagingSenderId: "530223256210",
   appId: "1:530223256210:web:fd1bbe2f608af803bacc4b"
 };
-// Firebase init with error handling
+// Firebase init — dynamic loading (never blocks page)
 let db=null;
-try{
-  firebase.initializeApp(firebaseConfig);
-  db=firebase.database();
-}catch(e){console.warn('Firebase init failed:',e);}
 
-try{rP();uC();checkInvite();}catch(e){
-  console.warn('Init error:',e);
-  document.getElementById('mainMenu').style.display='block';
-}
+// Show page immediately
+try{rP();uC();}catch(e){console.warn('Init:',e);}
+document.getElementById('mainMenu').style.display='block';
+// Safety: force show after 2s ONLY if nothing else is visible
+setTimeout(function(){
+  var panels=['mainMenu','invitePage','lobby','setup','game','histPanel'];
+  var anyVisible=panels.some(function(id){var el=document.getElementById(id);return el&&el.offsetHeight>0;});
+  if(!anyVisible){var m=document.getElementById('mainMenu');if(m)m.style.display='block';}
+},2000);
+
+// Load Firebase in background
+(async function(){
+  function loadS(u){return new Promise(function(ok){var s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=function(){console.warn('Load failed:'+u);ok();};document.head.appendChild(s);})}
+  try{
+    await loadS('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
+    await loadS('https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js');
+    if(typeof firebase!=='undefined'){
+      firebase.initializeApp(firebaseConfig);
+      db=firebase.database();
+      console.log('Firebase connected!');
+    }
+  }catch(e){console.warn('Firebase init failed:',e);}
+  // Now check invite (needs Firebase)
+  try{checkInvite();}catch(e){console.warn('checkInvite:',e);}
+  // Load Chart.js for history (low priority)
+  loadS('https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js');
+})();
 
 async function saveRecord(){
   if(!wn)return;

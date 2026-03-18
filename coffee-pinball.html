@@ -1629,6 +1629,7 @@ function startSpecCanvas(){
     }
     const isMegaPhase=specPh==='final';
     const isSlowPhase=specPh==='slowmo';
+    const isSM=isSlowPhase||isMegaPhase;// slowmo active flag (used by funnel + cups)
     const ins=8;
     
     // === DRAMATIC RESULT — clean canvas like host's continueConfetti() ===
@@ -1811,8 +1812,7 @@ function startSpecCanvas(){
     });
     
     // Cups (matches host draw() exactly)
-    const isSM=isSlowPhase||isMegaPhase;// slowmo active flag
-    if(specLayout.cups){let mx=0;specCups.forEach(sc=>{if(sc&&sc.fl>mx)mx=sc.fl;});const ins=8;
+    if(specLayout.cups){let mx=0;specCups.forEach(sc=>{if(sc&&sc.fl>mx)mx=sc.fl;});
       specLayout.cups.forEach((cup,i)=>{const sc=specCups[i]||{fl:0,cl:cup.cl};const isL=sc.fl===mx&&sc.fl>0;
         const cl=sc.cl||cup.cl;// Use sync color (up-to-date), fallback to layout
         // Trapezoid cup shape

@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
 <title>Coffee Pinball ☕</title>
 <!-- Open Graph for link preview (KakaoTalk, Slack, etc.) -->
-<meta property="og:title" content="☕ Coffee Pinball 🔮 — Who's buying coffee?">
-<meta property="og:description" content="Fun pinball game to decide who buys coffee! Join the game now!">
+<meta property="og:title" content="☕ Coffee Pinball 🔮 — Shall we?">
+<meta property="og:description" content="Who's buying coffee today? Join and find out! ☕🎯">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yunuuuk1.github.io/coffee-pinball/coffee-pinball.html">
-<meta name="description" content="Coffee Pinball — a fun coffee bet game for teams!">
+<meta name="description" content="Coffee Pinball — Shall we? Join the coffee bet game! ☕">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -1168,6 +1168,8 @@ iS=false;en=false;fB=false;fBF=0;fBSpawned=false;cG=GN;pa=[];resPhase=0;confetti
 $('game').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('cd').style.display='none';$('roundSum').style.display='none';
 // Clean up spectator overlay
 const spec=$('specOverlay');if(spec)spec.remove();
+const specBtn=$('specLeaveBtn');if(specBtn)specBtn.remove();
+if(specAnim)cancelAnimationFrame(specAnim);specAnim=null;
 const gw=$('gw');if(gw)gw.style.display='';
 if(roomRef){leaveRoom();}else{backToMenu();}
 rP();}
@@ -1429,32 +1431,42 @@ async function startRoomGame(){
   
   startRound();
   
-  // Sync game state every 30 frames
+  // Send obstacle layout once (spectators need to draw pins)
+  setTimeout(()=>{
+    roomRef.child('layout').set({
+      W,H,CUH:40,
+      obstacles:ob.map(o=>({x:o.x,y:o.y,r:o.r,s:o.s,rt:o.rt,pt:o.pt})),
+      cups:cu.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h}))
+    });
+  },500);
+  
+  // Sync game state every 10 frames (~6x/sec)
+  let syncF=0;
   const syncInterval=setInterval(()=>{
-    if(!roomRef||!en===undefined)return;
-    syncFrame++;
-    if(syncFrame%30===0){
+    if(!roomRef)return;
+    syncF++;
+    if(syncF%10===0){
+      const ballData=bl.filter(b=>b.a).map(b=>({x:Math.round(b.x),y:Math.round(b.y),tp:b.tp}));
       const cupData=cu.map(c=>({nm:c.nm,fl:c.fl,cl:c.cl}));
       const megaSpawned3=bl.filter(b=>b.tp==='megabomb'||b.tp==='megagold').length;
       const megaNotYet3=fB?Math.max(0,2-megaSpawned3):2;
-      const unspawned3=mxB-dr;
-      const flying3=bl.filter(b=>b.a).length;
-      const remaining2=Math.max(0,unspawned3+megaNotYet3+flying3);
+      const remaining2=Math.max(0,(mxB-dr)+megaNotYet3+bl.filter(b=>b.a).length);
+      const leaderCup=cu.reduce((a,b)=>a.fl>b.fl?a:b,{fl:-1,nm:''});
       
       roomRef.child('gameState').set({
         phase:en?'result':fB?'final':iS?'slowmo':'dropping',
-        drops:dr,maxDrops:mxB,
         remaining:remaining2,
+        balls:ballData,
         cups:cupData,
-        leader:cu.reduce((a,b)=>a.fl>b.fl?a:b,{fl:-1}).nm,
+        leader:leaderCup.nm,
         lastEvent:tl.length?tl[tl.length-1].t:'',
       });
     }
     if(en){
       clearInterval(syncInterval);
-      // Send final result
       roomRef.child('gameState').set({
         phase:'result',
+        balls:[],
         cups:cu.map(c=>({nm:c.nm,fl:c.fl,cl:c.cl})),
         winner:wn?wn.nm:'',
         winnerScore:wn?wn.fl:0
@@ -1464,69 +1476,220 @@ async function startRoomGame(){
   },1000/60);
 }
 
-// ═══ SPECTATOR MODE ═══
+// ═══ SPECTATOR MODE — Canvas Game View ═══
+let specLayout=null,specBalls=[],specCups=[],specPhaseText='',specRemaining=0,specLeader='',specEvent='',specAnim=null;
+
 function showSpectator(){
+  $('lobby').style.display='none';
   $('game').style.display='flex';
-  // Hide canvas, show spectator overlay
   const gw=$('gw');
-  if(!$('specOverlay')){
-    const ov=document.createElement('div');
-    ov.id='specOverlay';
-    ov.style.cssText='width:100%;padding:16px;text-align:center;';
-    ov.innerHTML=`
-      <div style="font-size:14px;color:#7a6a5a;margin-bottom:8px">📺 LIVE — Room #${roomId}</div>
-      <div style="font-size:18px;color:#E8927C;font-weight:700;margin-bottom:4px" id="specPhase">Waiting...</div>
-      <div style="font-size:13px;color:#5a4a3a;margin-bottom:12px" id="specRemaining"></div>
-      <div id="specBars" style="margin:12px 0"></div>
-      <div style="font-size:16px;font-weight:900;margin:8px 0" id="specLeader"></div>
-      <div style="font-size:13px;color:#FFD700;margin:8px 0" id="specEvent"></div>
-      <div id="specResult" style="display:none;margin-top:16px"></div>
-    `;
-    gw.parentElement.insertBefore(ov,gw);
-    gw.style.display='none';
+  // Use the same canvas!
+  const cv=$('cv');cv.width=500;cv.height=cv.height||700;
+  
+  // Load layout from Firebase (pins + cups)
+  if(roomRef){
+    roomRef.child('layout').once('value').then(snap=>{
+      specLayout=snap.val();
+      if(specLayout){cv.width=specLayout.W;cv.height=specLayout.H;}
+      startSpecRender();
+    });
   }
 }
 
+function startSpecRender(){
+  const cv=$('cv'),c=cv.getContext('2d');
+  const BR=6;
+  
+  function drawSpec(){
+    if(!specLayout){specAnim=requestAnimationFrame(drawSpec);return;}
+    const W=specLayout.W,H=specLayout.H;
+    
+    // Background
+    c.fillStyle='#1a1714';c.fillRect(0,0,W,H);
+    
+    // Grid
+    c.strokeStyle='rgba(232,146,124,.04)';c.lineWidth=1;
+    for(let x=0;x<W;x+=50){c.beginPath();c.moveTo(x,0);c.lineTo(x,H);c.stroke();}
+    for(let y=0;y<H;y+=50){c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke();}
+    
+    // Drop zone
+    c.fillStyle='rgba(232,146,124,.06)';c.beginPath();
+    c.moveTo(W/2-60,0);c.lineTo(W/2+60,0);c.lineTo(W/2+40,50);c.lineTo(W/2-40,50);
+    c.closePath();c.fill();
+    c.fillStyle='#5a4a3a';c.font='12px "Noto Sans KR",sans-serif';c.textAlign='center';
+    c.fillText('DROP ZONE',W/2,30);
+    
+    // Remaining counter
+    c.fillStyle=specRemaining<=7?'#ef4444':'#5a4a3a';
+    c.font=`${specRemaining<=7?'bold ':''}12px "Noto Sans KR",sans-serif`;
+    c.textAlign='right';c.fillText(`${specRemaining} left`,W-10,20);
+    
+    // Obstacles (pins)
+    if(specLayout.obstacles){
+      specLayout.obstacles.forEach(o=>{
+        const colors={normal:'#555',bumper:'#ef4444',slow:'#3b82f6',redirect:'#22c55e'};
+        c.fillStyle=colors[o.pt]||'#555';
+        c.beginPath();c.arc(o.x,o.y,o.r*.8,0,Math.PI*2);c.fill();
+        if(o.pt!=='normal'){c.shadowColor=colors[o.pt];c.shadowBlur=6;c.fill();c.shadowBlur=0;}
+      });
+    }
+    
+    // Cups
+    if(specLayout.cups){
+      let mx=0;specCups.forEach(sc=>{if(sc.fl>mx)mx=sc.fl;});
+      
+      specLayout.cups.forEach((cup,i)=>{
+        const sc=specCups[i]||{fl:0,cl:cup.cl};
+        const isL=sc.fl===mx&&sc.fl>0;
+        const ins=8;
+        
+        // Trapezoid cup
+        c.beginPath();
+        c.moveTo(cup.x,cup.y);c.lineTo(cup.x+cup.w,cup.y);
+        c.lineTo(cup.x+cup.w-ins,cup.y+cup.h);c.lineTo(cup.x+ins,cup.y+cup.h);
+        c.closePath();c.fillStyle='#1e1b18';c.fill();
+        c.strokeStyle=isL?'#ef4444':cup.cl;c.lineWidth=isL?2.5:2;c.stroke();
+        
+        // Fill level
+        if(sc.fl>0&&mx>0){
+          c.save();c.beginPath();
+          c.moveTo(cup.x,cup.y);c.lineTo(cup.x+cup.w,cup.y);
+          c.lineTo(cup.x+cup.w-ins,cup.y+cup.h);c.lineTo(cup.x+ins,cup.y+cup.h);
+          c.closePath();c.clip();
+          const vf=Math.min(sc.fl/Math.max(mx,1),1);
+          const fy=cup.y+cup.h*(1-vf);
+          const fg=c.createLinearGradient(0,fy,0,cup.y+cup.h);
+          fg.addColorStop(0,cup.cl+'99');fg.addColorStop(1,cup.cl);
+          c.fillStyle=fg;c.fillRect(cup.x,fy,cup.w,cup.h*vf+2);
+          c.restore();
+        }
+        
+        // Coffee emoji for leader
+        if(isL){
+          c.save();c.globalAlpha=1;c.shadowBlur=0;
+          const crFs=cup.w<40?30:cup.w<55?39:57;
+          c.font=crFs+'px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#fff';
+          c.fillText('☕',Math.round(cup.x+cup.w/2),Math.round(cup.y-12));
+          c.restore();
+        }
+        
+        // Name
+        c.globalAlpha=1;
+        let nameFs=cup.w<40?12:cup.w<55?15:cup.w<70?17:20;
+        if(isL)nameFs=Math.round(nameFs*1.4);
+        c.fillStyle=isL?'#fff':'rgba(255,255,255,.85)';
+        c.font=`${nameFs}px "Noto Sans KR",sans-serif`;c.textAlign='center';
+        c.fillText(cup.nm,cup.x+cup.w/2,cup.y+cup.h/2+nameFs/3);
+        
+        // Count
+        const cntFs=cup.w<40?8:cup.w<55?9:11;
+        c.fillStyle='#7a6a5a';c.font=`${cntFs}px "Noto Sans KR",sans-serif`;
+        c.fillText(sc.fl,cup.x+cup.w/2,cup.y+cup.h+16);
+        
+        // Divider
+        if(i<specLayout.cups.length-1){
+          c.beginPath();c.moveTo(cup.x+cup.w,cup.y);c.lineTo(cup.x+cup.w,cup.y+cup.h);
+          c.strokeStyle='#3d3229';c.lineWidth=1;c.stroke();
+        }
+      });
+    }
+    
+    // Balls
+    specBalls.forEach(b=>{
+      if(b.tp==='gold'){
+        c.save();c.shadowColor='#FFD700';c.shadowBlur=12;
+        c.beginPath();c.arc(b.x,b.y,BR+1,0,Math.PI*2);
+        const g=c.createRadialGradient(b.x-1,b.y-1,1,b.x,b.y,BR+1);
+        g.addColorStop(0,'#FFF8DC');g.addColorStop(.5,'#FFD700');g.addColorStop(1,'#B8860B');
+        c.fillStyle=g;c.fill();c.restore();
+      }else if(b.tp==='megagold'){
+        c.save();c.shadowColor='#FFD700';c.shadowBlur=24;const sz=BR+6;
+        c.fillStyle='rgba(255,215,0,.2)';c.beginPath();c.arc(b.x,b.y,sz+10,0,Math.PI*2);c.fill();
+        c.beginPath();c.arc(b.x,b.y,sz,0,Math.PI*2);
+        const g=c.createRadialGradient(b.x,b.y,1,b.x,b.y,sz);
+        g.addColorStop(0,'#FFFFFF');g.addColorStop(.6,'#FFD700');g.addColorStop(1,'#B8860B');
+        c.fillStyle=g;c.fill();c.restore();
+      }else if(b.tp==='megabomb'){
+        c.save();c.shadowColor='#FF4500';c.shadowBlur=30;const sz=BR+8;
+        c.fillStyle='rgba(255,69,0,.2)';c.beginPath();c.arc(b.x,b.y,sz+12,0,Math.PI*2);c.fill();
+        c.beginPath();c.arc(b.x,b.y,sz,0,Math.PI*2);
+        const g=c.createRadialGradient(b.x,b.y,1,b.x,b.y,sz);
+        g.addColorStop(0,'#ff6633');g.addColorStop(.7,'#1a1a1a');g.addColorStop(1,'#FF4500');
+        c.fillStyle=g;c.fill();c.restore();
+      }else if(b.tp==='bomb'){
+        c.save();c.shadowColor='#ef4444';c.shadowBlur=10;
+        c.beginPath();c.arc(b.x,b.y,BR+1,0,Math.PI*2);
+        const g=c.createRadialGradient(b.x,b.y,1,b.x,b.y,BR+1);
+        g.addColorStop(0,'#555');g.addColorStop(.7,'#1a1a1a');g.addColorStop(1,'#ef4444');
+        c.fillStyle=g;c.fill();c.restore();
+      }else{
+        c.beginPath();c.arc(b.x,b.y,BR,0,Math.PI*2);
+        const g=c.createRadialGradient(b.x-2,b.y-2,1,b.x,b.y,BR);
+        g.addColorStop(0,'#c4905a');g.addColorStop(1,'#6b3a1a');c.fillStyle=g;c.fill();
+      }
+    });
+    
+    // Phase text overlay
+    if(specPhaseText==='final'){
+      c.font='900 24px "Noto Sans KR",sans-serif';c.textAlign='center';
+      c.fillStyle='rgba(239,68,68,.7)';c.fillText('FINAL DROP',W/2,H/2+10);
+    }else if(specPhaseText==='slowmo'){
+      c.font='900 24px "Noto Sans KR",sans-serif';c.textAlign='center';
+      c.fillStyle='rgba(239,68,68,.5)';c.fillText('FINAL ROUND',W/2,H/2+10);
+    }
+    
+    // Event toast at top
+    if(specEvent){
+      c.font='bold 16px "Noto Sans KR",sans-serif';c.textAlign='center';
+      c.fillStyle='#FFD700';c.shadowColor='#000';c.shadowBlur=8;
+      c.fillText(specEvent,W/2,H*0.4);c.shadowBlur=0;
+    }
+    
+    // Result overlay
+    if(specPhaseText==='result'&&specWinner){
+      c.fillStyle='rgba(0,0,0,.75)';c.fillRect(0,0,W,H);
+      c.font='72px "Noto Sans KR",sans-serif';c.textAlign='center';
+      c.fillStyle='#fff';c.fillText('☕',W/2,H/2-80);
+      c.font='900 48px "Noto Sans KR",sans-serif';
+      c.fillStyle='#FFD700';c.shadowColor='#FFD700';c.shadowBlur=30;
+      c.fillText(specWinner,W/2,H/2);c.shadowBlur=0;
+      c.font='18px "Noto Sans KR",sans-serif';c.fillStyle='#7a6a5a';
+      c.fillText(specWinnerScore+' drops — buys coffee!',W/2,H/2+40);
+    }
+    
+    // LIVE badge
+    c.font='bold 11px "Noto Sans KR",sans-serif';c.textAlign='left';
+    c.fillStyle='#ef4444';c.fillText('● LIVE',10,20);
+    
+    specAnim=requestAnimationFrame(drawSpec);
+  }
+  drawSpec();
+}
+
+let specWinner='',specWinnerScore=0;
+
 function updateSpectator(gs){
   if(!gs)return;
-  const p=$('specPhase');const r=$('specRemaining');const b=$('specBars');const l=$('specLeader');const e=$('specEvent');
-  if(!p)return;
+  specPhaseText=gs.phase||'';
+  specRemaining=gs.remaining||0;
+  specLeader=gs.leader||'';
+  specEvent=gs.lastEvent||'';
+  if(gs.balls)specBalls=gs.balls;
+  if(gs.cups)specCups=gs.cups;
+  if(gs.winner){specWinner=gs.winner;specWinnerScore=gs.winnerScore||0;}
   
-  const phases={dropping:'🎯 Dropping!',slowmo:'🔥 FINAL ROUND',final:'💥 FINAL DROP',result:'🏆 Result!'};
-  p.textContent=phases[gs.phase]||gs.phase;
-  p.style.color=gs.phase==='final'?'#ef4444':gs.phase==='result'?'#FFD700':'#E8927C';
-  
-  if(gs.remaining!==undefined)r.textContent=`${gs.remaining} drops left`;
-  
-  // Score bars
-  if(gs.cups){
-    const mx=Math.max(...gs.cups.map(c=>c.fl),1);
-    let html='';
-    const sorted=[...gs.cups].sort((a,b2)=>b2.fl-a.fl);
-    sorted.forEach((c,i)=>{
-      const pct=Math.round(c.fl/mx*100);
-      const isLeader=i===0&&c.fl>0;
-      html+=`<div style="display:flex;align-items:center;gap:8px;margin:4px 0">
-        <span style="width:60px;font-size:12px;color:${c.cl||'#c0b0a0'};text-align:right;font-weight:${isLeader?'900':'400'}">${isLeader?'☕ ':''}${c.nm}</span>
-        <div style="flex:1;height:20px;background:#1e1b18;border-radius:4px;overflow:hidden">
-          <div style="width:${pct}%;height:100%;background:${c.cl||'#E8927C'};border-radius:4px;transition:width .3s"></div>
-        </div>
-        <span style="width:30px;font-size:13px;color:#e8d5c4;font-weight:700">${c.fl}</span>
-      </div>`;
-    });
-    b.innerHTML=html;
-  }
-  
-  if(gs.leader)l.innerHTML=`<span style="color:#FFD700">☕ Leader: ${gs.leader}</span>`;
-  if(gs.lastEvent)e.textContent=gs.lastEvent;
-  
-  // Result
+  // Show leave button on result
   if(gs.phase==='result'&&gs.winner){
-    const res=$('specResult');
-    res.style.display='block';
-    res.innerHTML=`<div style="font-size:28px;font-weight:900;color:#FFD700;margin:12px 0">🏆 ${gs.winner}</div>
-      <div style="font-size:15px;color:#7a6a5a">${gs.winnerScore} drops — buys coffee!</div>
-      <button class="leave-btn" onclick="leaveRoom()" style="margin-top:12px;width:100%">🚪 Leave Room</button>`;
+    setTimeout(()=>{
+      if(!$('specLeaveBtn')){
+        const btn=document.createElement('button');
+        btn.id='specLeaveBtn';btn.className='leave-btn';
+        btn.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100;padding:14px 40px;font-size:15px';
+        btn.textContent='🚪 Leave Room';
+        btn.onclick=()=>{cancelAnimationFrame(specAnim);leaveRoom();};
+        document.body.appendChild(btn);
+      }
+    },2000);
   }
 }
 

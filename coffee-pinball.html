@@ -200,7 +200,7 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
   </div>
   <!-- Monthly Chart -->
   <div class="hist-card">
-    <h3>📅 Monthly Stats</h3>
+    <h3>📅 Monthly Stats (<span id="monthYear"></span>)</h3>
     <canvas id="monthChart" height="180"></canvas>
   </div>
   <!-- Streak -->
@@ -1140,6 +1140,7 @@ function renderRanking(data){
 
 function renderMonthly(data){
   const now=new Date();const year=now.getFullYear();
+  $('monthYear').textContent=year;
   const months={};
   for(let m=0;m<12;m++){months[m]={};}
   data.forEach(g=>{
@@ -1201,17 +1202,21 @@ function renderStreak(data){
   let html=`<div style="margin-bottom:8px">📈 Total games: <strong>${totalGames}</strong></div>`;
   html+=`<div style="margin-bottom:8px">🔥 Current streak: <span class="streak-badge">${lastWinner} × ${streak}</span></div>`;
   html+=`<div style="margin-bottom:8px">🏅 Longest streak ever: <span class="streak-badge">${maxName} × ${maxStreak}</span></div>`;
-  if(topBuyer)html+=`<div>☕ Most coffee bought: <strong>${topBuyer[0]}</strong> (${topBuyer[1]} times)</div>`;
+  if(topBuyer){
+    const rate=Math.round(topBuyer[1]/totalGames*100);
+    html+=`<div>☕ Most coffee bought: <strong>${topBuyer[0]}</strong> (${topBuyer[1]} time${topBuyer[1]>1?'s':''}, ${rate}%)</div>`;
+  }
   $('streakInfo').innerHTML=html;
 }
 
 function renderTable(data){
   const recent=data.slice(0,20);
-  let html='<table class="hist-table"><thead><tr><th>Date</th><th>Winner</th><th>Players</th><th>TB</th></tr></thead><tbody>';
+  let html='<table class="hist-table"><thead><tr><th>Date</th><th>Time</th><th>Winner</th><th>Players</th><th>TB</th></tr></thead><tbody>';
   recent.forEach(g=>{
     const d=g.date||'';
-    const short=d.slice(5);// MM-DD
-    html+=`<tr><td>${short}</td><td style="color:#E8927C;font-weight:700">${g.winner}</td><td>${(g.players||'').split(',').length}P</td><td>${g.tiebreaker==='yes'?'⚡':''}</td></tr>`;
+    const short=d.slice(2);// YY-MM-DD
+    const time=g.time||'';
+    html+=`<tr><td>${short}</td><td>${time}</td><td style="color:#E8927C;font-weight:700">${g.winner}</td><td>${(g.players||'').split(',').length}P</td><td>${g.tiebreaker==='yes'?'⚡':''}</td></tr>`;
   });
   html+='</tbody></table>';
   $('histTable').innerHTML=html;

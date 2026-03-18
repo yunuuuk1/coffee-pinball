@@ -377,6 +377,10 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
   </div>
 </div>
 
+<canvas id="cheerCanvas"></canvas>
+<button class="cheer-btn" id="cheerBtn" onclick="sendCheer()">👏</button>
+<div class="cheer-count" id="cheerCount">👏 0</div>
+
 <script>
 const $=id=>document.getElementById(id);
 const C=['#E8927C','#7CB5E8','#A8D5A2','#F5C563','#C49BE8','#E87CA8','#7CE8D5','#E8C27C','#7C92E8','#B8E87C'];
@@ -1532,7 +1536,7 @@ async function startRoomGame(){
   
   startRoomSync();
   // Host also sees cheers from spectators
-  resizeCheerCanvas();listenCheers();
+  
 }
 
 // ═══ SYNC FUNCTION (reusable) ═══
@@ -1658,10 +1662,10 @@ function showSpectatorResult(){}
 
 // ═══ CHEER SYSTEM ═══
 let cheerParticles=[],cheerCooldown=false,cheerTotal=0,cheerAnimRunning=false;
-const cheerCanvas=document.getElementById('cheerCanvas');
-const cheerCtx=cheerCanvas?cheerCanvas.getContext('2d'):null;
+let cheerCanvas=null;
+let cheerCtx=null;
 
-function resizeCheerCanvas(){
+function resizeCheerCanvas(){if(!cheerCanvas){cheerCanvas=document.getElementById('cheerCanvas');cheerCtx=cheerCanvas?cheerCanvas.getContext('2d'):null;}
   if(!cheerCanvas)return;
   cheerCanvas.width=window.innerWidth;
   cheerCanvas.height=window.innerHeight;
@@ -1975,7 +1979,10 @@ try{
   db=firebase.database();
 }catch(e){console.warn('Firebase init failed:',e);}
 
-rP();uC();checkInvite();
+try{rP();uC();checkInvite();}catch(e){
+  console.warn('Init error:',e);
+  document.getElementById('mainMenu').style.display='block';
+}
 
 async function saveRecord(){
   if(!wn)return;
@@ -2152,9 +2159,5 @@ function renderTable(data){
   $('histTable').innerHTML=html;
 }
 </script>
-<canvas id="cheerCanvas"></canvas>
-<!-- Cheer System -->
-<button class="cheer-btn" id="cheerBtn" onclick="sendCheer()">👏</button>
-<div class="cheer-count" id="cheerCount">👏 0</div>
 </body>
 </html>

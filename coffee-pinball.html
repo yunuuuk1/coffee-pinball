@@ -381,8 +381,9 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 <script>
 // Safety: if nothing shows within 2 seconds, force mainMenu visible
 setTimeout(function(){
+  if(typeof userNav!=='undefined'&&userNav)return;// User already navigated, don't override
   var m=document.getElementById('mainMenu');
-  if(m&&!m.offsetHeight){m.style.display='block';m.style.opacity='1';}
+  if(m&&!m.offsetHeight){m.style.display='block';}
 },2000);
 
 const $=id=>document.getElementById(id);
@@ -1582,15 +1583,20 @@ function startRoomSync(){
 let specLayout=null,specBalls=[],specTgt=[],specCups=[],specPh='',specRem=0,specLd='',specEv='',specAnim=null;
 let specWinner='',specWinnerScore=0,specResultShown=false;
 let specRedBorder=false,specCountdown=null,specShaking=false;
+let specResPhase=0,specDramaF=0,specConfetti=[];
+let specWinnerCl='#FFD700',specLastEv='';
 
 function showSpectator(){userNav=true;
   $('lobby').style.display='none';$('invitePage').style.display='none';$('mainMenu').style.display='none';
   $('game').style.display='flex';$('rs').style.display='none';$('roundSum').style.display='none';
   $('rinfo').style.display='none';
+  // Initialize HTML overlays (same as host uses)
+  $('so').style.display='none';$('st2').style.display='none';
+  $('cd').style.display='none';$('et').classList.remove('sh');
   const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
   const sl=$('specLive');if(sl)sl.remove();
   const cv=$('cv');cv.style.display='';cv.width=500;cv.height=700;
-  specResultShown=false;specWinner='';specBalls=[];specTgt=[];
+  specResultShown=false;specWinner='';specResPhase=0;specDramaF=0;specConfetti=[];specBalls=[];specTgt=[];specLastEv='';
   // Enable cheering for spectators
   resizeCheerCanvas();showCheerBtn();
   function tryLoad(){
@@ -1731,45 +1737,109 @@ function startSpecCanvas(){
         if(i<specLayout.cups.length-1){c.beginPath();c.moveTo(cup.x+cup.w,cup.y);c.lineTo(cup.x+cup.w,cup.y+cup.h);c.strokeStyle='#3d3229';c.lineWidth=1;c.stroke();}
       });
     }
-    // Phase overlay (pulsing like host's #st2 CSS animation)
-    const pulsA=.4+Math.sin(Date.now()*.005)*.3;// pulse 0.1~0.7
-    if(specPh==='final'){c.font='900 24px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle=`rgba(239,68,68,${pulsA})`;c.letterSpacing='3px';c.fillText('FINAL DROP',W/2,H/2+10);}
-    else if(specPh==='slowmo'){c.font='900 24px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle=`rgba(239,68,68,${pulsA})`;c.fillText('FINAL ROUND',W/2,H/2+10);}
-    // Event toast
-    if(specEv){c.font='bold 16px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#FFD700';c.shadowColor='#000';c.shadowBlur=8;c.fillText(specEv,W/2,H*.42);c.shadowBlur=0;}
-    // Result overlay
-    if(specPh==='result'&&specWinner&&!specResultShown){c.fillStyle='rgba(0,0,0,.8)';c.fillRect(0,0,W,H);c.font='72px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#fff';c.fillText('☕',W/2,H/2-80);c.font='900 48px "Noto Sans KR",sans-serif';c.fillStyle='#FFD700';c.shadowColor='#FFD700';c.shadowBlur=30;c.fillText(specWinner,W/2,H/2);c.shadowBlur=0;c.font='18px "Noto Sans KR",sans-serif';c.fillStyle='#7a6a5a';c.fillText(specWinnerScore+' drops — buys coffee!',W/2,H/2+40);}
+    // Phase overlay, countdown, border, toast — all handled by HTML overlays in updateSpectator()
+    // (uses same #cd, #so, #st2, #et as host for identical CSS animations)
+    // === DRAMATIC RESULT (matches host's startDramaticReveal) ===
+    if(specResPhase>=1){
+      specDramaF++;
+      const scX=W/2,scY=H/2-20;
+      
+      if(specResPhase===1){
+        // Phase 1: Spotlight fade in (60 frames)
+        const spotA=Math.min(specDramaF/60*.75,.75);
+        c.save();c.fillStyle=`rgba(0,0,0,${spotA})`;c.fillRect(0,0,W,H);
+        // Cutout spotlight
+        c.globalCompositeOperation='destination-out';
+        const grad=c.createRadialGradient(scX,scY,40,scX,scY,180);
+        grad.addColorStop(0,'rgba(0,0,0,1)');grad.addColorStop(.6,'rgba(0,0,0,.9)');grad.addColorStop(1,'rgba(0,0,0,0)');
+        c.fillStyle=grad;c.fillRect(scX-220,scY-220,440,440);
+        c.globalCompositeOperation='source-over';
+        // Pulsing ring
+        const pulse=Math.sin(specDramaF*.12)*8;
+        c.strokeStyle=specWinnerCl+'60';c.lineWidth=6;c.shadowColor=specWinnerCl;c.shadowBlur=35;
+        c.beginPath();c.arc(scX,scY,140+pulse,0,Math.PI*2);c.stroke();
+        c.strokeStyle=specWinnerCl;c.lineWidth=3;c.shadowBlur=20;
+        c.beginPath();c.arc(scX,scY,100+pulse*.5,0,Math.PI*2);c.stroke();
+        c.fillStyle=specWinnerCl+'15';c.beginPath();c.arc(scX,scY,95,0,Math.PI*2);c.fill();
+        c.shadowBlur=0;
+        // ☕ fading in
+        c.globalAlpha=Math.min(specDramaF/60,1);
+        c.font='72px "Noto Sans KR",sans-serif';c.textAlign='center';
+        c.fillStyle='#fff';c.shadowColor='#FFD700';c.shadowBlur=20;
+        c.fillText('☕',scX,scY-130);c.shadowBlur=0;c.globalAlpha=1;
+        c.restore();
+        if(specDramaF>=60){specResPhase=2;specDramaF=0;}
+      }
+      else if(specResPhase===2){
+        // Phase 2: Confetti burst + winner name (120 frames)
+        if(specDramaF===1){
+          // Spawn confetti
+          const colors2=['#E8927C','#7CB5E8','#A8D5A2','#F5C563','#C49BE8','#E87CA8','#FFD700','#ef4444','#22c55e','#fff'];
+          for(let wave=0;wave<3;wave++){
+            setTimeout(()=>{
+              for(let i=0;i<80;i++){
+                specConfetti.push({x:Math.random()*W,y:-20-Math.random()*100,vx:(Math.random()-.5)*4,vy:1+Math.random()*3,r:2+Math.random()*4,rot:Math.random()*360,rv:(Math.random()-.5)*8,cl:colors2[Math.floor(Math.random()*colors2.length)],lf:120+Math.random()*80,ml:200,shape:Math.random()>.5?'rect':'circle'});
+              }
+            },wave*400);
+          }
+        }
+        // Update confetti
+        specConfetti=specConfetti.filter(cf=>{cf.x+=cf.vx;cf.y+=cf.vy;cf.vy+=.04;cf.rot+=cf.rv;cf.vx*=.99;cf.lf--;return cf.lf>0&&cf.y<H+50;});
+        // Dark overlay + spotlight
+        c.save();c.fillStyle='rgba(0,0,0,.75)';c.fillRect(0,0,W,H);
+        c.globalCompositeOperation='destination-out';
+        const grad2=c.createRadialGradient(scX,scY,40,scX,scY,180);
+        grad2.addColorStop(0,'rgba(0,0,0,1)');grad2.addColorStop(.6,'rgba(0,0,0,.9)');grad2.addColorStop(1,'rgba(0,0,0,0)');
+        c.fillStyle=grad2;c.fillRect(scX-220,scY-220,440,440);
+        c.globalCompositeOperation='source-over';
+        // Ring
+        const pulse2=Math.sin(specDramaF*.12)*8;
+        c.strokeStyle=specWinnerCl+'60';c.lineWidth=6;c.shadowColor=specWinnerCl;c.shadowBlur=35;
+        c.beginPath();c.arc(scX,scY,140+pulse2,0,Math.PI*2);c.stroke();
+        c.strokeStyle=specWinnerCl;c.lineWidth=3;c.shadowBlur=20;
+        c.beginPath();c.arc(scX,scY,100+pulse2*.5,0,Math.PI*2);c.stroke();
+        c.fillStyle=specWinnerCl+'20';c.beginPath();c.arc(scX,scY,95,0,Math.PI*2);c.fill();c.shadowBlur=0;
+        // ☕ emoji
+        c.font='72px "Noto Sans KR",sans-serif';c.textAlign='center';
+        c.fillStyle='#fff';c.shadowColor='#FFD700';c.shadowBlur=20;
+        c.fillText('☕',scX,scY-130);c.shadowBlur=0;
+        // Winner name
+        c.font='900 64px "Noto Sans KR",sans-serif';c.textAlign='center';
+        c.fillStyle=specWinnerCl;c.shadowColor=specWinnerCl;c.shadowBlur=35;
+        c.fillText(specWinner,scX,scY+20);c.shadowBlur=0;
+        c.restore();
+        // Draw confetti on top
+        for(let cf of specConfetti){c.save();c.globalAlpha=Math.min(cf.lf/40,1);c.translate(cf.x,cf.y);c.rotate(cf.rot*Math.PI/180);c.fillStyle=cf.cl;
+          if(cf.shape==='rect')c.fillRect(-cf.r,-cf.r/2,cf.r*2,cf.r);
+          else{c.beginPath();c.arc(0,0,cf.r,0,Math.PI*2);c.fill();}c.restore();}
+        
+        if(specDramaF>=120){specResPhase=3;specDramaF=0;}
+      }
+      else if(specResPhase===3){
+        // Phase 3: Continue confetti while HTML result shows
+        specConfetti=specConfetti.filter(cf=>{cf.x+=cf.vx;cf.y+=cf.vy;cf.vy+=.04;cf.rot+=cf.rv;cf.vx*=.99;cf.lf--;return cf.lf>0&&cf.y<H+50;});
+        c.save();c.fillStyle='rgba(0,0,0,.75)';c.fillRect(0,0,W,H);
+        const grad3=c.createRadialGradient(scX,scY,40,scX,scY,180);
+        c.globalCompositeOperation='destination-out';
+        grad3.addColorStop(0,'rgba(0,0,0,1)');grad3.addColorStop(.6,'rgba(0,0,0,.9)');grad3.addColorStop(1,'rgba(0,0,0,0)');
+        c.fillStyle=grad3;c.fillRect(scX-220,scY-220,440,440);
+        c.globalCompositeOperation='source-over';
+        c.strokeStyle=specWinnerCl;c.lineWidth=3;c.shadowColor=specWinnerCl;c.shadowBlur=20;
+        c.beginPath();c.arc(scX,scY,100,0,Math.PI*2);c.stroke();c.shadowBlur=0;
+        c.font='72px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#fff';c.shadowColor='#FFD700';c.shadowBlur=20;
+        c.fillText('☕',scX,scY-130);c.shadowBlur=0;
+        c.font='900 64px "Noto Sans KR",sans-serif';c.fillStyle=specWinnerCl;c.shadowColor=specWinnerCl;c.shadowBlur=35;
+        c.fillText(specWinner,scX,scY+20);c.shadowBlur=0;
+        c.restore();
+        for(let cf of specConfetti){c.save();c.globalAlpha=Math.min(cf.lf/40,1);c.translate(cf.x,cf.y);c.rotate(cf.rot*Math.PI/180);c.fillStyle=cf.cl;
+          if(cf.shape==='rect')c.fillRect(-cf.r,-cf.r/2,cf.r*2,cf.r);
+          else{c.beginPath();c.arc(0,0,cf.r,0,Math.PI*2);c.fill();}c.restore();}
+      }
+    }
     
     if(specShaking)c.restore();
     
-    // Red border overlay (synced from host)
-    if(specRedBorder){
-      c.save();
-      c.strokeStyle='rgba(239,68,68,.7)';c.lineWidth=4;
-      c.shadowColor='rgba(239,68,68,.5)';c.shadowBlur=15;
-      c.strokeRect(2,2,W-4,H-4);
-      c.shadowBlur=0;c.restore();
-    }
-    
-    // Countdown overlay
-    if(specCountdown&&specCountdown!=='null'){
-      c.fillStyle='rgba(18,16,14,.92)';c.fillRect(0,0,W,H);
-      c.textAlign='center';
-      if(specCountdown==='GO'){
-        c.font='900 42px "Noto Sans KR",sans-serif';
-        c.fillStyle='#E8927C';c.shadowColor='#E8927C';c.shadowBlur=20;
-        c.fillText('DROP!',W/2,H/2+15);
-      }else if(specCountdown==='ready'){
-        c.font='20px "Noto Sans KR",sans-serif';
-        c.fillStyle='#7a6a5a';
-        c.fillText('Get Ready...',W/2,H/2);
-      }else{
-        c.font='900 80px "Noto Sans KR",sans-serif';
-        c.fillStyle='#e8d5c4';c.shadowColor='#FFD700';c.shadowBlur=20;
-        c.fillText(specCountdown,W/2,H/2+25);
-      }
-      c.shadowBlur=0;
-    }
+    // Red border, countdown, FINAL text, event toast — all via HTML overlays (identical to host)
     
     specAnim=requestAnimationFrame(dS);
   }
@@ -1785,6 +1855,38 @@ function updateSpectator(gs){
   if(gs.phase==='dropping'&&gs.balls&&gs.balls.length>0)specCountdown=null;
   if(gs.cups)specCups=gs.cups;
   if(gs.winner){specWinner=gs.winner;specWinnerScore=gs.winnerScore||0;}
+  
+  // === USE HOST'S HTML OVERLAYS ===
+  // Countdown: use same #cd overlay with CSS animations
+  const cdOv=$('cd'),cdN=$('cdN'),cdG=$('cdG'),cdS=$('cdS');
+  if(specCountdown==='3'||specCountdown==='2'||specCountdown==='1'){
+    cdOv.style.display='flex';cdS.style.display='none';
+    cdN.style.display='';cdN.textContent=specCountdown;cdN.className='cdn sh';
+    cdG.className='cdg';
+  }else if(specCountdown==='GO'){
+    cdN.style.display='none';cdG.className='cdg sh';
+  }else if(specCountdown==='ready'){
+    cdOv.style.display='flex';cdS.textContent='';cdS.style.display='none';
+    cdN.textContent='';cdG.className='cdg';
+  }else if(!specCountdown||specCountdown==='null'){
+    cdOv.style.display='none';cdN.style.display='';
+  }
+  
+  // Red border: use same #so HTML overlay with CSS animation
+  $('so').style.display=specRedBorder?'block':'none';
+  
+  // FINAL ROUND / FINAL DROP: use same #st2 HTML overlay with CSS animation
+  if(specPh==='final'){$('st2').textContent='FINAL DROP';$('st2').style.display='block';}
+  else if(specPh==='slowmo'){$('st2').textContent='FINAL ROUND';$('st2').style.display='block';}
+  else{$('st2').style.display='none';}
+  
+  // Event toast: use same #et HTML overlay
+  if(gs.lastEvent&&gs.lastEvent!==specLastEv){
+    specLastEv=gs.lastEvent;
+    const wCl=gs.cups?gs.cups.reduce((a,b)=>a.fl>b.fl?a:b,{cl:'#FFD700'}).cl:'#FFD700';
+    const e=$('et');e.textContent=gs.lastEvent;e.style.color=wCl;
+    e.classList.remove('sh');void e.offsetWidth;e.classList.add('sh');
+  }
   // Sync balls — snap to server positions + adopt velocity for local prediction
   if(gs.balls){
     specTgt=gs.balls;
@@ -1809,19 +1911,25 @@ function updateSpectator(gs){
       b.tp=t.tp;
     });
   }else{specBalls=[];specTgt=[];}
-  // Result: show HTML after 3s
-  if(gs.phase==='result'&&gs.winner&&!specResultShown){
-    setTimeout(()=>{specResultShown=true;if(specAnim)cancelAnimationFrame(specAnim);
-      $('rs').style.display='block';$('wN').textContent=gs.winner;$('wN').style.color=gs.cups?(gs.cups.find(c2=>c2.nm===gs.winner)||{}).cl||'#FFD700':'#FFD700';
-      $('wSc').textContent=`${gs.winnerScore} drops`;
+  // Result: start dramatic reveal (matches host timing)
+  if(gs.phase==='result'&&gs.winner&&specResPhase===0){
+    specResPhase=1;specDramaF=0;specConfetti=[];
+    specWinnerCl=gs.cups?(gs.cups.find(c2=>c2.nm===gs.winner)||{}).cl||'#FFD700':'#FFD700';
+    // Save gs for HTML result after animation
+    const savedGs={...gs};
+    // Show HTML result after dramatic reveal completes (~3.3s = 60+120 frames)
+    setTimeout(()=>{
+      specResultShown=true;
+      $('rs').style.display='block';$('wN').textContent=savedGs.winner;$('wN').style.color=specWinnerCl;
+      $('wSc').textContent=`${savedGs.winnerScore} drops`;
       // Scoreboard with splash damage (same as host)
       const sb=$('scb');sb.innerHTML='';
-      if(gs.cups){
-        const sorted=[...gs.cups].sort((a,b)=>b.fl-a.fl);
+      if(savedGs.cups){
+        const sorted=[...savedGs.cups].sort((a,b)=>b.fl-a.fl);
         sorted.forEach((c2,i)=>{
-          const isW=c2.nm===gs.winner;
-          const origIdx=gs.cups.findIndex(gc=>gc.nm===c2.nm);
-          const sdTxt=gs.splashDmg&&origIdx>=0&&gs.splashDmg[origIdx]?` (${gs.splashDmg[origIdx]})`:'';
+          const isW=c2.nm===savedGs.winner;
+          const origIdx=savedGs.cups.findIndex(gc=>gc.nm===c2.nm);
+          const sdTxt=savedGs.splashDmg&&origIdx>=0&&savedGs.splashDmg[origIdx]?` (${savedGs.splashDmg[origIdx]})`:'';
           const r=document.createElement('span');r.className='sbr2';
           r.style.color=c2.cl||'#c0b0a0';r.style.borderColor=isW?c2.cl:'#2d2319';r.style.background=isW?c2.cl+'15':'transparent';
           r.textContent=`${i===0?'🥇':i===1?'🥈':i===2?'🥉':' '} ${c2.nm}:${c2.fl}${sdTxt}`;
@@ -1830,21 +1938,22 @@ function updateSpectator(gs){
       }
       // Highlights (same as host)
       const te=$('tl');te.innerHTML='';
-      if(gs.highlights&&gs.highlights.length){
+      if(savedGs.highlights&&savedGs.highlights.length){
         const h=document.createElement('div');
         h.style.cssText='font-size:12px;color:#E8927C;font-weight:600;margin-bottom:4px';
         h.textContent='⚡ Highlights';te.appendChild(h);
-        gs.highlights.forEach(ev=>{
+        savedGs.highlights.forEach(ev=>{
           const it=document.createElement('div');it.className='ti';it.style.color=ev.cl;it.textContent=ev.t;te.appendChild(it);
         });
       }
       const gbt=document.querySelector('.gbt');if(gbt){gbt.style.display='flex';gbt.innerHTML=`<button class="leave-btn" onclick="leaveRoom()" style="flex:1;padding:12px">🚪 Leave Room</button>`;}
-    },3000);
+    },3300);
   }
   // Play Again: host restarted
   if(gs.phase==='dropping'&&specResultShown){
-    specResultShown=false;specWinner='';specBalls=[];specTgt=[];
-    $('rs').style.display='none';const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
+    specResultShown=false;specWinner='';specResPhase=0;specDramaF=0;specConfetti=[];specBalls=[];specTgt=[];specLastEv='';
+    $('rs').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');
+    const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
     if(roomRef)roomRef.child('layout').once('value').then(snap=>{specLayout=snap.val();const cv=$('cv');if(specLayout){cv.width=specLayout.W;cv.height=specLayout.H;}cv.style.display='';startSpecCanvas();});
   }
 }

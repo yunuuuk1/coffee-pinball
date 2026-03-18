@@ -162,13 +162,16 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
 <div id="joinScreen">
   <div class="lobby-card">
     <h3 style="color:#3b82f6;font-size:18px;margin-bottom:16px">🚪 Join Room</h3>
-    <div style="margin-bottom:12px;color:#7a6a5a;font-size:13px">Enter 6-digit room code</div>
-    <input class="join-input" id="joinCode" maxlength="6" placeholder="ABC123" oninput="this.value=this.value.toUpperCase()">
-    <div style="margin-top:12px">
-      <input class="nick-input" id="joinNick" placeholder="Your nickname" maxlength="10">
+    <div style="text-align:left;margin-bottom:10px">
+      <div style="font-size:12px;color:#7a6a5a;margin-bottom:4px">Room Code</div>
+      <input class="join-input" id="joinCode" maxlength="6" placeholder="ABC123" oninput="this.value=this.value.toUpperCase()" style="width:100%">
+    </div>
+    <div style="text-align:left;margin-bottom:10px">
+      <div style="font-size:12px;color:#7a6a5a;margin-bottom:4px">Your Name</div>
+      <input class="nick-input" id="joinNick" placeholder="e.g. 이도한" maxlength="10" style="width:100%">
     </div>
     <div class="lobby-actions" style="margin-top:16px">
-      <button class="copy-btn" onclick="joinRoom()" id="joinBtn">🚪 Join</button>
+      <button class="copy-btn" onclick="joinRoom()" id="joinBtn">🚪 Join Room</button>
       <button class="leave-btn" onclick="backToMenu()">← Back</button>
     </div>
   </div>
@@ -178,9 +181,17 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
 <div id="createScreen" style="display:none;max-width:500px;width:100%;padding:0 16px;text-align:center">
   <div class="lobby-card">
     <h3 style="color:#22c55e;font-size:18px;margin-bottom:16px">🏠 Create Room</h3>
-    <input class="nick-input" id="hostNick" placeholder="Your nickname" maxlength="10">
+    <div style="text-align:left;margin-bottom:10px">
+      <div style="font-size:12px;color:#7a6a5a;margin-bottom:4px">Your Name</div>
+      <input class="nick-input" id="hostNick" placeholder="e.g. 김연욱" maxlength="10" style="width:100%">
+    </div>
+    <div style="text-align:left;margin-bottom:10px">
+      <div style="font-size:12px;color:#7a6a5a;margin-bottom:4px">Room Name (optional)</div>
+      <input class="nick-input" id="roomName" placeholder="e.g. 개발팀 커피내기" maxlength="20" style="width:100%">
+    </div>
+    <div style="font-size:11px;color:#5a4a3a;margin:8px 0;text-align:left">☕ A 6-digit room code will be created automatically.</div>
     <div class="lobby-actions" style="margin-top:12px">
-      <button class="menu-btn menu-create" onclick="createRoom()" style="margin:0;padding:12px" id="createBtn">🏠 Create</button>
+      <button class="menu-btn menu-create" onclick="createRoom()" style="margin:0;padding:12px" id="createBtn">🏠 Create Room</button>
       <button class="leave-btn" onclick="backToMenu()">← Back</button>
     </div>
   </div>
@@ -191,6 +202,7 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
   <div class="lobby-card">
     <div style="font-size:13px;color:#7a6a5a;margin-bottom:4px">Room Code</div>
     <div class="lobby-code" id="roomCode">------</div>
+    <div style="font-size:15px;color:#e8d5c4;font-weight:700;margin-top:6px" id="roomNameDisplay"></div>
     <div class="lobby-host" id="roomHost">Host: ---</div>
     <div style="margin-top:4px;font-size:12px;color:#5a4a3a" id="roomStatus">Waiting for players...</div>
   </div>
@@ -1181,6 +1193,7 @@ async function createRoom(){
     roomRef=db.ref('rooms/'+roomId);
     await roomRef.set({
       host:nick,
+      roomName:$('roomName').value.trim()||'Coffee Game',
       created:firebase.database.ServerValue.TIMESTAMP,
       status:'waiting',
       players:{[pushKey()]:{name:nick,joinedAt:firebase.database.ServerValue.TIMESTAMP,online:true,isHost:true}}
@@ -1250,7 +1263,14 @@ async function joinRoom(){
 function showLobby(){
   $('lobby').style.display='block';
   $('roomCode').textContent=roomId;
-  $('roomHost').textContent='Host: '+myNick;
+  // Load room name
+  if(roomRef)roomRef.once('value').then(s=>{
+    const d=s.val();
+    if(d){
+      $('roomNameDisplay').textContent=d.roomName||'';
+      $('roomHost').textContent='Host: '+(d.host||myNick);
+    }
+  });
   $('startRoomBtn').disabled=!isHost;
   $('startRoomBtn').style.display=isHost?'block':'none';
   if(!isHost)$('startRoomBtn').parentElement.innerHTML=`<button class="copy-btn" onclick="copyInvite()">📋 Copy Invite Link</button><div style="padding:10px;color:#7a6a5a;font-size:13px;text-align:center">Waiting for host to start...</div>`;

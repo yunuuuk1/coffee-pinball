@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
 <title>Coffee Pinball ☕</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{min-height:100vh;background:#12100e;display:flex;flex-direction:column;align-items:center;font-family:'Noto Sans KR',sans-serif;color:#e8d5c4;overflow-x:hidden;padding-bottom:40px;-webkit-tap-highlight-color:transparent}
@@ -37,6 +40,18 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 .gb{background:linear-gradient(135deg,#E8927C,#d4755e);color:#1a1410;border:none;font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:700;padding:12px 0;border-radius:50px;cursor:pointer;letter-spacing:2px;text-transform:uppercase;width:100%;margin-top:14px;transition:all .3s}
 .gb:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 20px rgba(232,146,124,.4)}
 .gb:disabled{opacity:.3;cursor:not-allowed}
+.save-btn{background:#22c55e;color:#fff;border:none;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:700;padding:7px 18px;border-radius:50px;cursor:pointer;transition:all .3s;letter-spacing:.5px}
+.save-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(34,197,94,.4)}
+.save-btn:disabled{opacity:.4;cursor:not-allowed}
+.hist-btn{background:transparent;border:1.5px solid #5a4a3a;color:#7a6a5a;font-family:'Noto Sans KR',sans-serif;font-size:13px;padding:10px 0;border-radius:50px;cursor:pointer;width:100%;margin-top:10px;transition:all .3s;letter-spacing:1px}
+.hist-btn:hover{border-color:#E8927C;color:#E8927C}
+#histPanel{display:none;max-width:500px;width:100%;padding:0 16px}
+.hist-card{background:#1a1714;border:1px solid #2d2319;border-radius:12px;padding:14px;margin-bottom:12px}
+.hist-card h3{font-size:15px;color:#E8927C;margin-bottom:10px;font-weight:700}
+.hist-table{width:100%;font-size:11px;color:#c0b0a0;border-collapse:collapse}
+.hist-table th{text-align:left;color:#7a6a5a;padding:4px 6px;border-bottom:1px solid #2d2319;font-weight:400}
+.hist-table td{padding:4px 6px;border-bottom:1px solid #1e1b18}
+.streak-badge{display:inline-block;background:#ef4444;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
 #game{display:none;flex-direction:column;align-items:center;width:100%;max-width:520px;padding:0 8px}
 #gw{position:relative;display:inline-block;width:100%}
 canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:auto}
@@ -137,6 +152,7 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
     <div class="li"><div class="ld" style="background:#1a3a1a;border:1px solid #22c55e"></div><span style="color:#22c55e">Redirect</span></div>
   </div>
   <button class="gb" id="goB" disabled onclick="startAll()">DROP!</button>
+  <button class="hist-btn" onclick="showHistory()">📊 Game History</button>
 </div>
 
 <div id="game">
@@ -164,9 +180,38 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
   </div>
   <div class="gbt">
     <button class="br2" id="nxBtn" onclick="nextRound()" style="display:none">Next Round →</button>
+    <button class="save-btn" id="saveBtn" onclick="saveRecord()">💾 Save Record</button>
     <button class="br2" id="reBtn" onclick="restart()">Play Again</button>
     <button class="bb2" onclick="back()">Edit Names</button>
     <button class="bm2" id="muB" onclick="togMute()">🔊</button>
+  </div>
+</div>
+
+<!-- History Panel -->
+<div id="histPanel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h2 style="font-size:20px;font-weight:900;color:#E8927C">📊 History</h2>
+    <button class="bb2" onclick="$('histPanel').style.display='none';$('setup').style.display='block'" style="padding:6px 14px;font-size:12px">← Back</button>
+  </div>
+  <!-- Ranking Chart -->
+  <div class="hist-card">
+    <h3>🏆 Most Coffee Bought</h3>
+    <canvas id="rankChart" height="200"></canvas>
+  </div>
+  <!-- Monthly Chart -->
+  <div class="hist-card">
+    <h3>📅 Monthly Stats</h3>
+    <canvas id="monthChart" height="180"></canvas>
+  </div>
+  <!-- Streak -->
+  <div class="hist-card">
+    <h3>🔥 Win Streak</h3>
+    <div id="streakInfo" style="font-size:13px;color:#c0b0a0"></div>
+  </div>
+  <!-- Game History Table -->
+  <div class="hist-card">
+    <h3>📝 Recent Games</h3>
+    <div id="histTable" style="overflow-x:auto"></div>
   </div>
 </div>
 
@@ -990,6 +1035,187 @@ if(origPl){pl=origPl;}tbMode=false;origPl=null;origCumScores=null;origColors=nul
 iS=false;en=false;fB=false;fBF=0;fBSpawned=false;cG=GN;pa=[];resPhase=0;confetti=[];dramaF=0;$('game').style.display='none';$('setup').style.display='block';$('so').style.display='none';$('st2').style.display='none';$('cd').style.display='none';$('roundSum').style.display='none';rP();}
 
 rP();uC();
+
+// ═══ FIREBASE DATABASE ═══
+const firebaseConfig = {
+  apiKey: "AIzaSyBrTT3kz81Z4srh2Jov1cw7XagccXQI2xA",
+  authDomain: "coffee-pinball.firebaseapp.com",
+  databaseURL: "https://coffee-pinball-default-rtdb.firebaseio.com",
+  projectId: "coffee-pinball",
+  storageBucket: "coffee-pinball.firebasestorage.app",
+  messagingSenderId: "530223256210",
+  appId: "1:530223256210:web:fd1bbe2f608af803bacc4b"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+async function saveRecord(){
+  if(!wn)return;
+  const btn=$('saveBtn');btn.disabled=true;btn.textContent='💾 Saving...';
+  
+  const now=new Date();
+  const dateStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const timeStr=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const scores=pl.map((n,i)=>`${n.trim()}:${cumScores[i]}`).join(',');
+  const winnerNm=wn.tied?wn.tied.map(w=>w.nm).join('&'):wn.nm;
+  const hadTB=tbRound>0?'yes':'no';
+  
+  const payload={
+    date:dateStr,
+    time:timeStr,
+    players:pl.map(n=>n.trim()).join(','),
+    winner:winnerNm,
+    scores:scores,
+    tiebreaker:hadTB,
+    rounds:maxRounds,
+    timestamp:firebase.database.ServerValue.TIMESTAMP
+  };
+
+  try{
+    await db.ref('games').push(payload);
+    btn.textContent='✅ Saved!';
+  }catch(e){
+    // Fallback to localStorage
+    const hist=JSON.parse(localStorage.getItem('cpHistory')||'[]');
+    hist.push(payload);localStorage.setItem('cpHistory',JSON.stringify(hist));
+    btn.textContent='✅ Saved (local)';
+  }
+  setTimeout(()=>{btn.textContent='💾 Save Record';btn.disabled=false;},2000);
+}
+
+async function loadHistory(){
+  let data=[];
+  try{
+    const snapshot=await db.ref('games').orderByChild('timestamp').once('value');
+    if(snapshot.exists()){
+      snapshot.forEach(child=>{data.push(child.val());});
+    }
+  }catch(e){}
+  // Also merge localStorage backup
+  const local=JSON.parse(localStorage.getItem('cpHistory')||'[]');
+  const seen=new Set(data.map(d=>`${d.date}_${d.winner}_${d.players}`));
+  for(const l of local){if(!seen.has(`${l.date}_${l.winner}_${l.players}`)){data.push(l);}}
+  return data.sort((a,b)=>a.date>b.date?-1:a.date<b.date?1:0);
+}
+
+async function showHistory(){
+  $('setup').style.display='none';$('histPanel').style.display='block';
+  const data=await loadHistory();
+  if(!data.length){
+    $('streakInfo').textContent='No games recorded yet. Play a game and save!';
+    return;
+  }
+  renderRanking(data);
+  renderMonthly(data);
+  renderStreak(data);
+  renderTable(data);
+}
+
+// Chart instances
+let rankChartInst=null,monthChartInst=null;
+
+function renderRanking(data){
+  const wins={};
+  data.forEach(g=>{
+    const w=g.winner.split('&');
+    w.forEach(n=>{const nm=n.trim();wins[nm]=(wins[nm]||0)+1;});
+  });
+  const sorted=Object.entries(wins).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const labels=sorted.map(s=>s[0]);
+  const values=sorted.map(s=>s[1]);
+  const colors=sorted.map((_,i)=>[
+    '#E8927C','#FFD700','#22c55e','#3b82f6','#a855f7',
+    '#ec4899','#f97316','#14b8a6','#6366f1','#ef4444'
+  ][i%10]);
+
+  if(rankChartInst)rankChartInst.destroy();
+  rankChartInst=new Chart($('rankChart'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'Times bought coffee ☕',data:values,backgroundColor:colors,borderRadius:6}]},
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#7a6a5a',stepSize:1},grid:{color:'#2d2319'}},
+        y:{ticks:{color:'#c0b0a0',font:{family:'Noto Sans KR'}},grid:{display:false}}}}
+  });
+}
+
+function renderMonthly(data){
+  const now=new Date();const year=now.getFullYear();
+  const months={};
+  for(let m=0;m<12;m++){months[m]={};}
+  data.forEach(g=>{
+    const d=new Date(g.date);
+    if(d.getFullYear()===year){
+      const m=d.getMonth();
+      const w=g.winner.split('&');
+      w.forEach(n=>{const nm=n.trim();if(!months[m][nm])months[m][nm]=0;months[m][nm]++;});
+    }
+  });
+
+  const allNames=new Set();
+  data.forEach(g=>g.winner.split('&').forEach(n=>allNames.add(n.trim())));
+  const nameArr=[...allNames].slice(0,6);
+  const monthLabels=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const palette=['#E8927C','#FFD700','#22c55e','#3b82f6','#a855f7','#ec4899'];
+
+  const datasets=nameArr.map((nm,i)=>({
+    label:nm,
+    data:monthLabels.map((_,m)=>months[m][nm]||0),
+    borderColor:palette[i%6],
+    backgroundColor:palette[i%6]+'33',
+    fill:false,tension:.3,pointRadius:3
+  }));
+
+  if(monthChartInst)monthChartInst.destroy();
+  monthChartInst=new Chart($('monthChart'),{
+    type:'line',
+    data:{labels:monthLabels,datasets},
+    options:{responsive:true,
+      plugins:{legend:{labels:{color:'#7a6a5a',font:{family:'Noto Sans KR',size:10}}}},
+      scales:{x:{ticks:{color:'#7a6a5a'},grid:{color:'#2d2319'}},
+        y:{ticks:{color:'#7a6a5a',stepSize:1},grid:{color:'#2d2319'}}}}
+  });
+}
+
+function renderStreak(data){
+  if(!data.length){$('streakInfo').textContent='No data yet';return;}
+  // Calculate current streak (most recent consecutive wins by same person)
+  const sorted=[...data].sort((a,b)=>a.date>b.date?-1:1);
+  const lastWinner=sorted[0].winner;
+  let streak=0;
+  for(const g of sorted){if(g.winner===lastWinner)streak++;else break;}
+
+  // Find longest streak ever
+  const allSorted=[...data].sort((a,b)=>a.date>b.date?1:-1);
+  let maxStreak=0,maxName='',cs=0,cn='';
+  for(const g of allSorted){
+    if(g.winner===cn){cs++;}else{cs=1;cn=g.winner;}
+    if(cs>maxStreak){maxStreak=cs;maxName=cn;}
+  }
+
+  // Total games per player
+  const totalGames=data.length;
+  const winCount={};
+  data.forEach(g=>g.winner.split('&').forEach(n=>{const nm=n.trim();winCount[nm]=(winCount[nm]||0)+1;}));
+  const topBuyer=Object.entries(winCount).sort((a,b)=>b[1]-a[1])[0];
+
+  let html=`<div style="margin-bottom:8px">📈 Total games: <strong>${totalGames}</strong></div>`;
+  html+=`<div style="margin-bottom:8px">🔥 Current streak: <span class="streak-badge">${lastWinner} × ${streak}</span></div>`;
+  html+=`<div style="margin-bottom:8px">🏅 Longest streak ever: <span class="streak-badge">${maxName} × ${maxStreak}</span></div>`;
+  if(topBuyer)html+=`<div>☕ Most coffee bought: <strong>${topBuyer[0]}</strong> (${topBuyer[1]} times)</div>`;
+  $('streakInfo').innerHTML=html;
+}
+
+function renderTable(data){
+  const recent=data.slice(0,20);
+  let html='<table class="hist-table"><thead><tr><th>Date</th><th>Winner</th><th>Players</th><th>TB</th></tr></thead><tbody>';
+  recent.forEach(g=>{
+    const d=g.date||'';
+    const short=d.slice(5);// MM-DD
+    html+=`<tr><td>${short}</td><td style="color:#E8927C;font-weight:700">${g.winner}</td><td>${(g.players||'').split(',').length}P</td><td>${g.tiebreaker==='yes'?'⚡':''}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  $('histTable').innerHTML=html;
+}
 </script>
 </body>
 </html>

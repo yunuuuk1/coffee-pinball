@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
 <title>Coffee Pinball ☕</title>
+<!-- Open Graph for link preview (KakaoTalk, Slack, etc.) -->
+<meta property="og:title" content="☕ Coffee Pinball 🔮 — Who's buying coffee?">
+<meta property="og:description" content="Fun pinball game to decide who buys coffee! Join the game now!">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://yunuuuk1.github.io/coffee-pinball/coffee-pinball.html">
+<meta name="description" content="Coffee Pinball — a fun coffee bet game for teams!">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -1366,11 +1372,13 @@ function addLog(msg){
 }
 
 function copyInvite(){
-  const url=window.location.origin+window.location.pathname+'?room='+roomId;
+  // Always use GitHub Pages URL for sharing
+  const baseUrl='https://yunuuuk1.github.io/coffee-pinball/coffee-pinball.html';
+  const url=baseUrl+'?room='+roomId;
   navigator.clipboard.writeText(url).then(()=>{
     const btns=document.querySelectorAll('.copy-btn');
     btns.forEach(b=>{b.textContent='✅ Copied!';setTimeout(()=>{b.textContent='📋 Copy Invite Link';},1500);});
-  }).catch(()=>{prompt('Copy this link:',window.location.origin+window.location.pathname+'?room='+roomId);});
+  }).catch(()=>{prompt('Copy this link:',url);});
 }
 
 async function leaveRoom(){
@@ -1613,8 +1621,6 @@ async function joinFromInvite(){
   }
 }
 
-rP();uC();checkInvite();
-
 // ═══ FIREBASE DATABASE ═══
 const firebaseConfig = {
   apiKey: "AIzaSyBrTT3kz81Z4srh2Jov1cw7XagccXQI2xA",
@@ -1627,6 +1633,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
+
+rP();uC();checkInvite();
 
 async function saveRecord(){
   if(!wn)return;

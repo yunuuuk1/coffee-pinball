@@ -177,6 +177,31 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
   </div>
 </div>
 
+<!-- ═══ INVITE LANDING PAGE ═══ -->
+<div id="invitePage" style="display:none;max-width:500px;width:100%;padding:0 16px;text-align:center">
+  <div class="lobby-card" style="padding:28px 20px;border-color:#FFD700;border-width:2px">
+    <div style="font-size:48px;margin-bottom:8px">☕</div>
+    <div style="font-size:22px;font-weight:900;color:#e8d5c4;margin-bottom:4px">You're Invited!</div>
+    <div style="font-size:14px;color:#7a6a5a;margin-bottom:16px">Join the Coffee Pinball game</div>
+    <div style="background:#12100e;border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="font-size:11px;color:#5a4a3a;margin-bottom:4px">Room</div>
+      <div style="font-size:28px;font-weight:900;letter-spacing:6px;color:#FFD700" id="inviteCode">------</div>
+      <div style="font-size:15px;color:#e8d5c4;font-weight:700;margin-top:8px" id="inviteRoomName"></div>
+      <div style="font-size:12px;color:#7a6a5a;margin-top:4px" id="inviteHost">Host: ---</div>
+      <div style="font-size:12px;margin-top:8px" id="invitePlayers"></div>
+      <div style="font-size:12px;color:#5a4a3a;margin-top:4px" id="inviteStatus"></div>
+    </div>
+    <div style="text-align:left;margin-bottom:12px">
+      <div style="font-size:12px;color:#7a6a5a;margin-bottom:4px">Your Name</div>
+      <input class="nick-input" id="inviteNick" placeholder="e.g. 이도한" maxlength="10" style="width:100%">
+    </div>
+    <button class="menu-btn menu-join" id="inviteJoinBtn" onclick="joinFromInvite()" style="margin:0">🚪 Join Game</button>
+    <div style="margin-top:10px">
+      <button class="leave-btn" onclick="backToMenu()" style="width:100%">← No thanks</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ CREATE ROOM SCREEN ═══ -->
 <div id="createScreen" style="display:none;max-width:500px;width:100%;padding:0 16px;text-align:center">
   <div class="lobby-card">
@@ -1147,7 +1172,6 @@ let roomRef=null,roomId=null,isHost=false,myNick='',roomUnsub=null;
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r;}
 
 function backToMenu(){
-  // Leave room if in one
   if(roomRef)leaveRoom();
   $('mainMenu').style.display='block';
   $('setup').style.display='none';
@@ -1156,6 +1180,9 @@ function backToMenu(){
   $('lobby').style.display='none';
   $('histPanel').style.display='none';
   $('game').style.display='none';
+  $('invitePage').style.display='none';
+  // Clean URL params
+  window.history.replaceState({},'',window.location.pathname);
 }
 
 function goSolo(){
@@ -1175,9 +1202,6 @@ function showJoinScreen(){
   $('joinScreen').style.display='block';
   $('joinCode').value='';
   $('joinNick').value='';
-  // Check URL for room code
-  const params=new URLSearchParams(window.location.search);
-  if(params.get('room')){$('joinCode').value=params.get('room');}
   $('joinCode').focus();
 }
 
@@ -1502,13 +1526,91 @@ function showSpectatorResult(){}
 
 // ═══ INIT ═══
 // Check URL for room invite
-function checkInvite(){
+async function checkInvite(){
   const params=new URLSearchParams(window.location.search);
-  if(params.get('room')){
-    showJoinScreen();
+  const code=params.get('room');
+  if(code){
+    // Show invite landing page
+    $('invitePage').style.display='block';
+    $('inviteCode').textContent=code.toUpperCase();
+    $('inviteStatus').textContent='Loading room info...';
+    $('inviteStatus').style.color='#7a6a5a';
+    
+    // Fetch room info from Firebase
+    try{
+      const snap=await db.ref('rooms/'+code.toUpperCase()).once('value');
+      if(snap.exists()){
+        const room=snap.val();
+        $('inviteRoomName').textContent=room.roomName||'Coffee Game';
+        $('inviteHost').textContent='Host: '+(room.host||'???');
+        
+        const players=room.players?Object.values(room.players):[];
+        const online=players.filter(p=>p.online);
+        $('invitePlayers').innerHTML=`<span style="color:#22c55e">●</span> <span style="color:#c0b0a0">${online.length} player${online.length!==1?'s':''} waiting</span>`;
+        
+        if(room.status==='playing'){
+          $('inviteStatus').textContent='⚠️ Game in progress';
+          $('inviteStatus').style.color='#ef4444';
+          $('inviteJoinBtn').disabled=true;
+          $('inviteJoinBtn').style.opacity='.4';
+        }else if(players.length>=10){
+          $('inviteStatus').textContent='⚠️ Room is full (10/10)';
+          $('inviteStatus').style.color='#ef4444';
+          $('inviteJoinBtn').disabled=true;
+          $('inviteJoinBtn').style.opacity='.4';
+        }else{
+          $('inviteStatus').textContent='✅ Room is open!';
+          $('inviteStatus').style.color='#22c55e';
+        }
+      }else{
+        $('inviteRoomName').textContent='';
+        $('inviteHost').textContent='';
+        $('invitePlayers').textContent='';
+        $('inviteStatus').textContent='❌ Room not found';
+        $('inviteStatus').style.color='#ef4444';
+        $('inviteJoinBtn').disabled=true;
+        $('inviteJoinBtn').style.opacity='.4';
+      }
+    }catch(e){
+      $('inviteStatus').textContent='⚠️ Could not load room info';
+      $('inviteStatus').style.color='#f97316';
+    }
+    
+    $('inviteNick').focus();
     return;
   }
   $('mainMenu').style.display='block';
+}
+
+async function joinFromInvite(){
+  const params=new URLSearchParams(window.location.search);
+  const code=(params.get('room')||'').toUpperCase();
+  const nick=$('inviteNick').value.trim();
+  if(!nick){$('inviteNick').style.borderColor='#ef4444';return;}
+  
+  $('inviteJoinBtn').disabled=true;$('inviteJoinBtn').textContent='Joining...';
+  isHost=false;myNick=nick;roomId=code;
+  
+  try{
+    roomRef=db.ref('rooms/'+code);
+    const snap=await roomRef.once('value');
+    if(!snap.exists()){alert('Room not found!');$('inviteJoinBtn').disabled=false;$('inviteJoinBtn').textContent='🚪 Join Game';return;}
+    const roomData=snap.val();
+    if(roomData.status==='playing'){alert('Game already in progress!');$('inviteJoinBtn').disabled=false;$('inviteJoinBtn').textContent='🚪 Join Game';return;}
+    
+    const myKey=pushKey();
+    await roomRef.child('players/'+myKey).set({name:nick,joinedAt:firebase.database.ServerValue.TIMESTAMP,online:true,isHost:false});
+    roomRef.child('players/'+myKey+'/online').onDisconnect().set(false);
+    
+    $('invitePage').style.display='none';
+    // Clean URL
+    window.history.replaceState({},'',window.location.pathname);
+    showLobby();
+    listenRoom();
+  }catch(e){
+    $('inviteJoinBtn').disabled=false;$('inviteJoinBtn').textContent='🚪 Join Game';
+    alert('Failed to join: '+e.message);
+  }
 }
 
 rP();uC();checkInvite();

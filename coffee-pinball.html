@@ -1571,7 +1571,7 @@ function startRoomSync(){
       });
     }
     if(en){clearInterval(roomSyncInterval);roomSyncInterval=null;
-      roomRef.child('gameState').set({phase:'result',balls:[],cups:cu.map(c=>({nm:c.nm,fl:c.fl,cl:c.cl})),winner:wn?wn.nm:'',winnerScore:wn?wn.fl:0,
+      roomRef.child('gameState').set({phase:'result',balls:[],cups:cu.map(c=>({nm:c.nm,fl:c.fl,cl:c.cl})),winner:wn?wn.nm:'',winnerScore:wn?wn.fl:0,winnerCl:wn?wn.cl:'#FFD700',
         highlights:tl.slice(-15).map(e=>({t:e.t,cl:e.cl})),
         splashDmg:splashDmg.map((sd,i)=>sd.map(e=>e.tp+(e.v>0?'+':'')+e.v).join(', '))
       });
@@ -1650,10 +1650,11 @@ function startSpecCanvas(){
     // Drop zone
     c.fillStyle='rgba(232,146,124,0.15)';c.beginPath();c.moveTo(W/2-70,0);c.lineTo(W/2+70,0);c.lineTo(W/2+45,50);c.lineTo(W/2-45,50);c.closePath();c.fill();
     c.fillStyle='#5a4a3a';c.font='12px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillText('DROP ZONE',W/2,30);
-    // Counter
-    c.fillStyle=specRem<=7?'#ef4444':'#5a4a3a';c.font=`${specRem<=7?'bold ':''}12px "Noto Sans KR",sans-serif`;c.textAlign='right';c.fillText(`${specRem} left`,W-10,20);
-    // LIVE badge
-    c.font='bold 11px "Noto Sans KR",sans-serif';c.textAlign='left';c.fillStyle='#ef4444';c.fillText('● LIVE',10,20);
+    // Counter + LIVE badge (hide during result reveal)
+    if(specResPhase===0){
+      c.fillStyle=specRem<=7?'#ef4444':'#5a4a3a';c.font=`${specRem<=7?'bold ':''}12px "Noto Sans KR",sans-serif`;c.textAlign='right';c.fillText(`${specRem} left`,W-10,20);
+      c.font='bold 11px "Noto Sans KR",sans-serif';c.textAlign='left';c.fillStyle='#ef4444';c.fillText('● LIVE',10,20);
+    }
     // Slow-mo vignette
     if(isSlowPhase||isMegaPhase){const vg=c.createRadialGradient(W/2,H/2,W*.3,W/2,H/2,W*.7);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(100,20,20,0.25)');c.fillStyle=vg;c.fillRect(0,0,W,H);}
     // Arrow guides (matches host)
@@ -1880,11 +1881,10 @@ function updateSpectator(gs){
   else if(specPh==='slowmo'){$('st2').textContent='FINAL ROUND';$('st2').style.display='block';}
   else{$('st2').style.display='none';}
   
-  // Event toast: use same #et HTML overlay
-  if(gs.lastEvent&&gs.lastEvent!==specLastEv){
+  // Event toast: use same #et HTML overlay (hide during result)
+  if(specResPhase===0&&gs.lastEvent&&gs.lastEvent!==specLastEv){
     specLastEv=gs.lastEvent;
-    const wCl=gs.cups?gs.cups.reduce((a,b)=>a.fl>b.fl?a:b,{cl:'#FFD700'}).cl:'#FFD700';
-    const e=$('et');e.textContent=gs.lastEvent;e.style.color=wCl;
+    const e=$('et');e.style.display='';e.textContent=gs.lastEvent;e.style.color='#FFD700';
     e.classList.remove('sh');void e.offsetWidth;e.classList.add('sh');
   }
   // Sync balls — snap to server positions + adopt velocity for local prediction
@@ -1914,7 +1914,15 @@ function updateSpectator(gs){
   // Result: start dramatic reveal (matches host timing)
   if(gs.phase==='result'&&gs.winner&&specResPhase===0){
     specResPhase=1;specDramaF=0;specConfetti=[];
-    specWinnerCl=gs.cups?(gs.cups.find(c2=>c2.nm===gs.winner)||{}).cl||'#FFD700':'#FFD700';
+    // Get winner color - prefer explicit winnerCl, fallback to cups search
+    let wCl=gs.winnerCl||'#FFD700';
+    if(!gs.winnerCl&&gs.cups){for(const cup of gs.cups){if(cup.nm===gs.winner&&cup.cl){wCl=cup.cl;break;}}}
+    specWinnerCl=wCl;
+    // Hide ALL HTML overlays during dramatic reveal (clean canvas only)
+    $('so').style.display='none';
+    $('st2').style.display='none';
+    $('et').classList.remove('sh');$('et').style.display='none';
+    $('cd').style.display='none';
     // Save gs for HTML result after animation
     const savedGs={...gs};
     // Show HTML result after dramatic reveal completes (~3.3s = 60+120 frames)
@@ -1952,7 +1960,8 @@ function updateSpectator(gs){
   // Play Again: host restarted
   if(gs.phase==='dropping'&&specResultShown){
     specResultShown=false;specWinner='';specResPhase=0;specDramaF=0;specConfetti=[];specBalls=[];specTgt=[];specLastEv='';
-    $('rs').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');
+    $('rs').style.display='none';$('so').style.display='none';$('st2').style.display='none';
+    $('et').classList.remove('sh');$('et').style.display='';
     const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
     if(roomRef)roomRef.child('layout').once('value').then(snap=>{specLayout=snap.val();const cv=$('cv');if(specLayout){cv.width=specLayout.W;cv.height=specLayout.H;}cv.style.display='';startSpecCanvas();});
   }

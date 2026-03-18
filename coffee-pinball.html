@@ -1166,10 +1166,12 @@ function back(){cancelAnimationFrame(aI);clearInterval(dT);stopRec();stopBGM();
 if(origPl){pl=origPl;}tbMode=false;origPl=null;origCumScores=null;origColors=null;tbRound=0;
 iS=false;en=false;fB=false;fBF=0;fBSpawned=false;cG=GN;pa=[];resPhase=0;confetti=[];dramaF=0;
 $('game').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('cd').style.display='none';$('roundSum').style.display='none';
-// Clean up spectator overlay
+// Clean up spectator
 const spec=$('specOverlay');if(spec)spec.remove();
+const specLv=$('specLive');if(specLv)specLv.remove();
 const specBtn=$('specLeaveBtn');if(specBtn)specBtn.remove();
 if(specAnim)cancelAnimationFrame(specAnim);specAnim=null;
+const cv2=$('cv');if(cv2)cv2.style.display='';
 const gw=$('gw');if(gw)gw.style.display='';
 if(roomRef){leaveRoom();}else{backToMenu();}
 rP();}
@@ -1459,7 +1461,6 @@ async function startRoomGame(){
     if(!roomRef)return;
     syncF++;
     if(syncF%10===0){
-      const ballData=bl.filter(b=>b.a).map(b=>({x:Math.round(b.x),y:Math.round(b.y),tp:b.tp}));
       const cupData=cu.map(c=>({nm:c.nm,fl:c.fl,cl:c.cl}));
       const megaSpawned3=bl.filter(b=>b.tp==='megabomb'||b.tp==='megagold').length;
       const megaNotYet3=fB?Math.max(0,2-megaSpawned3):2;
@@ -1469,7 +1470,6 @@ async function startRoomGame(){
       roomRef.child('gameState').set({
         phase:en?'result':fB?'final':iS?'slowmo':'dropping',
         remaining:remaining2,
-        balls:ballData,
         cups:cupData,
         leader:leaderCup.nm,
         lastEvent:tl.length?tl[tl.length-1].t:'',
@@ -1479,7 +1479,6 @@ async function startRoomGame(){
       clearInterval(syncInterval);
       roomRef.child('gameState').set({
         phase:'result',
-        balls:[],
         cups:cu.map(c=>({nm:c.nm,fl:c.fl,cl:c.cl})),
         winner:wn?wn.nm:'',
         winnerScore:wn?wn.fl:0
@@ -1489,8 +1488,9 @@ async function startRoomGame(){
   },1000/60);
 }
 
-// ═══ SPECTATOR MODE — Canvas Game View ═══
-let specLayout=null,specBalls=[],specCups=[],specPhaseText='',specRemaining=0,specLeader='',specEvent='',specAnim=null;
+// ═══ SPECTATOR MODE — HTML-based (smooth + same result as host) ═══
+let specLayout=null,specCups=[],specPhaseText='',specRemaining=0,specLeader='',specEvent='',specAnim=null;
+let specWinner='',specWinnerScore=0,specResultShown=false;
 
 function showSpectator(){
   $('lobby').style.display='none';
@@ -1504,205 +1504,43 @@ function showSpectator(){
   const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
   $('rinfo').style.display='none';
   
-  const cv=$('cv');cv.width=500;cv.height=700;
-  const c=cv.getContext('2d');
+  // Replace canvas area with spectator live view
+  const gw=$('gw');
+  const cv=$('cv');cv.style.display='none';
   
-  // Show loading on canvas
-  c.fillStyle='#1a1714';c.fillRect(0,0,500,700);
-  c.font='18px "Noto Sans KR",sans-serif';c.textAlign='center';
-  c.fillStyle='#E8927C';c.fillText('🎮 Connecting to game...',250,350);
+  if(!$('specLive')){
+    const sl=document.createElement('div');
+    sl.id='specLive';
+    sl.style.cssText='width:100%;min-height:500px;background:#1a1714;border:1px solid #2d2319;border-radius:12px;padding:16px;position:relative';
+    sl.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="color:#ef4444;font-weight:900;font-size:12px">● LIVE</span>
+        <span style="color:#5a4a3a;font-size:12px" id="specRoomTag">Room #${roomId||''}</span>
+      </div>
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:22px;font-weight:900;color:#E8927C" id="specPhaseDisp">🎮 Connecting...</div>
+        <div style="font-size:13px;color:#5a4a3a;margin-top:4px" id="specRemDisp"></div>
+      </div>
+      <div id="specScoreBars" style="margin:16px 0"></div>
+      <div style="text-align:center;margin:12px 0">
+        <div style="font-size:18px;font-weight:900" id="specLeaderDisp"></div>
+      </div>
+      <div style="text-align:center;min-height:24px">
+        <div style="font-size:14px;font-weight:700;color:#FFD700;text-shadow:0 1px 4px rgba(0,0,0,.5)" id="specEventDisp"></div>
+      </div>
+    `;
+    gw.appendChild(sl);
+  }
   
-  // Load layout from Firebase (retry until available)
-  function tryLoadLayout(){
-    if(!roomRef)return;
+  specResultShown=false;
+  
+  // Wait for layout
+  if(roomRef){
     roomRef.child('layout').once('value').then(snap=>{
       specLayout=snap.val();
-      if(specLayout){
-        cv.width=specLayout.W;cv.height=specLayout.H;
-        startSpecRender();
-      }else{
-        // Layout not ready yet, retry
-        c.fillStyle='#1a1714';c.fillRect(0,0,500,700);
-        c.font='16px "Noto Sans KR",sans-serif';c.textAlign='center';
-        c.fillStyle='#7a6a5a';c.fillText('⏳ Waiting for host to start...',250,350);
-        setTimeout(tryLoadLayout,1000);
-      }
     });
   }
-  tryLoadLayout();
 }
-
-function startSpecRender(){
-  const cv=$('cv'),c=cv.getContext('2d');
-  const BR=6;
-  
-  function drawSpec(){
-    if(!specLayout){specAnim=requestAnimationFrame(drawSpec);return;}
-    const W=specLayout.W,H=specLayout.H;
-    
-    // Background
-    c.fillStyle='#1a1714';c.fillRect(0,0,W,H);
-    
-    // Grid
-    c.strokeStyle='rgba(232,146,124,.04)';c.lineWidth=1;
-    for(let x=0;x<W;x+=50){c.beginPath();c.moveTo(x,0);c.lineTo(x,H);c.stroke();}
-    for(let y=0;y<H;y+=50){c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke();}
-    
-    // Drop zone
-    c.fillStyle='rgba(232,146,124,.06)';c.beginPath();
-    c.moveTo(W/2-60,0);c.lineTo(W/2+60,0);c.lineTo(W/2+40,50);c.lineTo(W/2-40,50);
-    c.closePath();c.fill();
-    c.fillStyle='#5a4a3a';c.font='12px "Noto Sans KR",sans-serif';c.textAlign='center';
-    c.fillText('DROP ZONE',W/2,30);
-    
-    // Remaining counter
-    c.fillStyle=specRemaining<=7?'#ef4444':'#5a4a3a';
-    c.font=`${specRemaining<=7?'bold ':''}12px "Noto Sans KR",sans-serif`;
-    c.textAlign='right';c.fillText(`${specRemaining} left`,W-10,20);
-    
-    // Obstacles (pins)
-    if(specLayout.obstacles){
-      specLayout.obstacles.forEach(o=>{
-        const colors={normal:'#555',bumper:'#ef4444',slow:'#3b82f6',redirect:'#22c55e'};
-        c.fillStyle=colors[o.pt]||'#555';
-        c.beginPath();c.arc(o.x,o.y,o.r*.8,0,Math.PI*2);c.fill();
-        if(o.pt!=='normal'){c.shadowColor=colors[o.pt];c.shadowBlur=6;c.fill();c.shadowBlur=0;}
-      });
-    }
-    
-    // Cups
-    if(specLayout.cups){
-      let mx=0;specCups.forEach(sc=>{if(sc.fl>mx)mx=sc.fl;});
-      
-      specLayout.cups.forEach((cup,i)=>{
-        const sc=specCups[i]||{fl:0,cl:cup.cl};
-        const isL=sc.fl===mx&&sc.fl>0;
-        const ins=8;
-        
-        // Trapezoid cup
-        c.beginPath();
-        c.moveTo(cup.x,cup.y);c.lineTo(cup.x+cup.w,cup.y);
-        c.lineTo(cup.x+cup.w-ins,cup.y+cup.h);c.lineTo(cup.x+ins,cup.y+cup.h);
-        c.closePath();c.fillStyle='#1e1b18';c.fill();
-        c.strokeStyle=isL?'#ef4444':cup.cl;c.lineWidth=isL?2.5:2;c.stroke();
-        
-        // Fill level
-        if(sc.fl>0&&mx>0){
-          c.save();c.beginPath();
-          c.moveTo(cup.x,cup.y);c.lineTo(cup.x+cup.w,cup.y);
-          c.lineTo(cup.x+cup.w-ins,cup.y+cup.h);c.lineTo(cup.x+ins,cup.y+cup.h);
-          c.closePath();c.clip();
-          const vf=Math.min(sc.fl/Math.max(mx,1),1);
-          const fy=cup.y+cup.h*(1-vf);
-          const fg=c.createLinearGradient(0,fy,0,cup.y+cup.h);
-          fg.addColorStop(0,cup.cl+'99');fg.addColorStop(1,cup.cl);
-          c.fillStyle=fg;c.fillRect(cup.x,fy,cup.w,cup.h*vf+2);
-          c.restore();
-        }
-        
-        // Coffee emoji for leader
-        if(isL){
-          c.save();c.globalAlpha=1;c.shadowBlur=0;
-          const crFs=cup.w<40?30:cup.w<55?39:57;
-          c.font=crFs+'px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#fff';
-          c.fillText('☕',Math.round(cup.x+cup.w/2),Math.round(cup.y-12));
-          c.restore();
-        }
-        
-        // Name
-        c.globalAlpha=1;
-        let nameFs=cup.w<40?12:cup.w<55?15:cup.w<70?17:20;
-        if(isL)nameFs=Math.round(nameFs*1.4);
-        c.fillStyle=isL?'#fff':'rgba(255,255,255,.85)';
-        c.font=`${nameFs}px "Noto Sans KR",sans-serif`;c.textAlign='center';
-        c.fillText(cup.nm,cup.x+cup.w/2,cup.y+cup.h/2+nameFs/3);
-        
-        // Count
-        const cntFs=cup.w<40?8:cup.w<55?9:11;
-        c.fillStyle='#7a6a5a';c.font=`${cntFs}px "Noto Sans KR",sans-serif`;
-        c.fillText(sc.fl,cup.x+cup.w/2,cup.y+cup.h+16);
-        
-        // Divider
-        if(i<specLayout.cups.length-1){
-          c.beginPath();c.moveTo(cup.x+cup.w,cup.y);c.lineTo(cup.x+cup.w,cup.y+cup.h);
-          c.strokeStyle='#3d3229';c.lineWidth=1;c.stroke();
-        }
-      });
-    }
-    
-    // Balls
-    specBalls.forEach(b=>{
-      if(b.tp==='gold'){
-        c.save();c.shadowColor='#FFD700';c.shadowBlur=12;
-        c.beginPath();c.arc(b.x,b.y,BR+1,0,Math.PI*2);
-        const g=c.createRadialGradient(b.x-1,b.y-1,1,b.x,b.y,BR+1);
-        g.addColorStop(0,'#FFF8DC');g.addColorStop(.5,'#FFD700');g.addColorStop(1,'#B8860B');
-        c.fillStyle=g;c.fill();c.restore();
-      }else if(b.tp==='megagold'){
-        c.save();c.shadowColor='#FFD700';c.shadowBlur=24;const sz=BR+6;
-        c.fillStyle='rgba(255,215,0,.2)';c.beginPath();c.arc(b.x,b.y,sz+10,0,Math.PI*2);c.fill();
-        c.beginPath();c.arc(b.x,b.y,sz,0,Math.PI*2);
-        const g=c.createRadialGradient(b.x,b.y,1,b.x,b.y,sz);
-        g.addColorStop(0,'#FFFFFF');g.addColorStop(.6,'#FFD700');g.addColorStop(1,'#B8860B');
-        c.fillStyle=g;c.fill();c.restore();
-      }else if(b.tp==='megabomb'){
-        c.save();c.shadowColor='#FF4500';c.shadowBlur=30;const sz=BR+8;
-        c.fillStyle='rgba(255,69,0,.2)';c.beginPath();c.arc(b.x,b.y,sz+12,0,Math.PI*2);c.fill();
-        c.beginPath();c.arc(b.x,b.y,sz,0,Math.PI*2);
-        const g=c.createRadialGradient(b.x,b.y,1,b.x,b.y,sz);
-        g.addColorStop(0,'#ff6633');g.addColorStop(.7,'#1a1a1a');g.addColorStop(1,'#FF4500');
-        c.fillStyle=g;c.fill();c.restore();
-      }else if(b.tp==='bomb'){
-        c.save();c.shadowColor='#ef4444';c.shadowBlur=10;
-        c.beginPath();c.arc(b.x,b.y,BR+1,0,Math.PI*2);
-        const g=c.createRadialGradient(b.x,b.y,1,b.x,b.y,BR+1);
-        g.addColorStop(0,'#555');g.addColorStop(.7,'#1a1a1a');g.addColorStop(1,'#ef4444');
-        c.fillStyle=g;c.fill();c.restore();
-      }else{
-        c.beginPath();c.arc(b.x,b.y,BR,0,Math.PI*2);
-        const g=c.createRadialGradient(b.x-2,b.y-2,1,b.x,b.y,BR);
-        g.addColorStop(0,'#c4905a');g.addColorStop(1,'#6b3a1a');c.fillStyle=g;c.fill();
-      }
-    });
-    
-    // Phase text overlay
-    if(specPhaseText==='final'){
-      c.font='900 24px "Noto Sans KR",sans-serif';c.textAlign='center';
-      c.fillStyle='rgba(239,68,68,.7)';c.fillText('FINAL DROP',W/2,H/2+10);
-    }else if(specPhaseText==='slowmo'){
-      c.font='900 24px "Noto Sans KR",sans-serif';c.textAlign='center';
-      c.fillStyle='rgba(239,68,68,.5)';c.fillText('FINAL ROUND',W/2,H/2+10);
-    }
-    
-    // Event toast at top
-    if(specEvent){
-      c.font='bold 16px "Noto Sans KR",sans-serif';c.textAlign='center';
-      c.fillStyle='#FFD700';c.shadowColor='#000';c.shadowBlur=8;
-      c.fillText(specEvent,W/2,H*0.4);c.shadowBlur=0;
-    }
-    
-    // Result overlay
-    if(specPhaseText==='result'&&specWinner){
-      c.fillStyle='rgba(0,0,0,.75)';c.fillRect(0,0,W,H);
-      c.font='72px "Noto Sans KR",sans-serif';c.textAlign='center';
-      c.fillStyle='#fff';c.fillText('☕',W/2,H/2-80);
-      c.font='900 48px "Noto Sans KR",sans-serif';
-      c.fillStyle='#FFD700';c.shadowColor='#FFD700';c.shadowBlur=30;
-      c.fillText(specWinner,W/2,H/2);c.shadowBlur=0;
-      c.font='18px "Noto Sans KR",sans-serif';c.fillStyle='#7a6a5a';
-      c.fillText(specWinnerScore+' drops — buys coffee!',W/2,H/2+40);
-    }
-    
-    // LIVE badge
-    c.font='bold 11px "Noto Sans KR",sans-serif';c.textAlign='left';
-    c.fillStyle='#ef4444';c.fillText('● LIVE',10,20);
-    
-    specAnim=requestAnimationFrame(drawSpec);
-  }
-  drawSpec();
-}
-
-let specWinner='',specWinnerScore=0;
 
 function updateSpectator(gs){
   if(!gs)return;
@@ -1710,22 +1548,114 @@ function updateSpectator(gs){
   specRemaining=gs.remaining||0;
   specLeader=gs.leader||'';
   specEvent=gs.lastEvent||'';
-  if(gs.balls)specBalls=gs.balls;
   if(gs.cups)specCups=gs.cups;
   if(gs.winner){specWinner=gs.winner;specWinnerScore=gs.winnerScore||0;}
   
-  // Show leave button on result
-  if(gs.phase==='result'&&gs.winner){
-    setTimeout(()=>{
-      if(!$('specLeaveBtn')){
-        const btn=document.createElement('button');
-        btn.id='specLeaveBtn';btn.className='leave-btn';
-        btn.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100;padding:14px 40px;font-size:15px';
-        btn.textContent='🚪 Leave Room';
-        btn.onclick=()=>{cancelAnimationFrame(specAnim);leaveRoom();};
-        document.body.appendChild(btn);
-      }
-    },2000);
+  const phase=$('specPhaseDisp');
+  const rem=$('specRemDisp');
+  const bars=$('specScoreBars');
+  const leader=$('specLeaderDisp');
+  const evt=$('specEventDisp');
+  if(!phase)return;
+  
+  // Phase display
+  const phases={dropping:'🎯 Game in Progress',slowmo:'🔥 FINAL ROUND',final:'💥 FINAL DROP!',result:'🏆 Result!'};
+  phase.textContent=phases[gs.phase]||gs.phase||'Connecting...';
+  phase.style.color=gs.phase==='final'?'#ef4444':gs.phase==='result'?'#FFD700':'#E8927C';
+  if(gs.phase==='final')phase.style.textShadow='0 0 20px rgba(239,68,68,.5)';
+  else phase.style.textShadow='none';
+  
+  // Remaining
+  if(gs.remaining!==undefined)rem.textContent=`${gs.remaining} drops left`;
+  
+  // Score bars (animated)
+  if(gs.cups&&bars){
+    const mx=Math.max(...gs.cups.map(c=>c.fl),1);
+    const sorted=[...gs.cups].sort((a,b2)=>b2.fl-a.fl);
+    
+    // Only rebuild if cup count changed
+    if(bars.children.length!==sorted.length){
+      let html='';
+      sorted.forEach((c,i)=>{
+        const pct=Math.round(c.fl/mx*100);
+        const isL=i===0&&c.fl>0;
+        html+=`<div style="display:flex;align-items:center;gap:8px;margin:6px 0;transition:all .3s" data-name="${c.nm}">
+          <span style="width:70px;font-size:13px;color:${c.cl||'#c0b0a0'};text-align:right;font-weight:${isL?'900':'400'};white-space:nowrap;overflow:hidden">${isL?'☕ ':''}${c.nm}</span>
+          <div style="flex:1;height:28px;background:#12100e;border-radius:6px;overflow:hidden;border:1px solid ${isL?c.cl+'66':'#2d2319'}">
+            <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,${c.cl||'#E8927C'}88,${c.cl||'#E8927C'});border-radius:6px;transition:width .4s ease" class="spec-bar"></div>
+          </div>
+          <span style="width:35px;font-size:15px;color:#e8d5c4;font-weight:900;text-align:right" class="spec-score">${c.fl}</span>
+        </div>`;
+      });
+      bars.innerHTML=html;
+    }else{
+      // Update existing bars smoothly
+      sorted.forEach((c,i)=>{
+        const row=bars.children[i];
+        if(!row)return;
+        const pct=Math.round(c.fl/mx*100);
+        const isL=i===0&&c.fl>0;
+        const bar=row.querySelector('.spec-bar');
+        const score=row.querySelector('.spec-score');
+        if(bar)bar.style.width=pct+'%';
+        if(score)score.textContent=c.fl;
+      });
+    }
+  }
+  
+  // Leader
+  if(gs.leader)leader.innerHTML=`<span style="color:#FFD700">☕ ${gs.leader} is in the lead!</span>`;
+  
+  // Event toast
+  if(gs.lastEvent){
+    evt.textContent=gs.lastEvent;
+    evt.style.opacity='1';
+    evt.style.transform='scale(1.1)';
+    setTimeout(()=>{evt.style.transform='scale(1)';},200);
+  }
+  
+  // ═══ RESULT: Show same HTML as host ═══
+  if(gs.phase==='result'&&gs.winner&&!specResultShown){
+    specResultShown=true;
+    
+    // Hide live view
+    const sl=$('specLive');if(sl)sl.style.display='none';
+    const cv=$('cv');if(cv)cv.style.display='none';
+    
+    // Show result panel — same as host!
+    $('rs').style.display='block';
+    
+    // Winner name
+    $('wN').textContent=gs.winner;
+    $('wN').style.color=gs.cups?gs.cups.find(c=>c.nm===gs.winner)?.cl||'#FFD700':'#FFD700';
+    
+    // Score
+    $('wSc').textContent=`${gs.winnerScore} drops`;
+    
+    // Scoreboard — same format as host
+    const sb=$('scb');sb.innerHTML='';
+    if(gs.cups){
+      const sorted=[...gs.cups].sort((a,b)=>b.fl-a.fl);
+      sorted.forEach((c,i)=>{
+        const isW=c.nm===gs.winner;
+        const r=document.createElement('span');r.className='sbr2';
+        r.style.color=c.cl||'#c0b0a0';
+        r.style.borderColor=isW?c.cl:'#2d2319';
+        r.style.background=isW?c.cl+'15':'transparent';
+        r.textContent=`${i===0?'🥇':i===1?'🥈':i===2?'🥉':' '} ${c.nm}:${c.fl}`;
+        sb.appendChild(r);
+      });
+    }
+    
+    // Show spectator buttons (no Save/Play Again, just Leave)
+    const gbt=document.querySelector('.gbt');
+    if(gbt){
+      gbt.style.display='flex';
+      gbt.innerHTML=`<button class="leave-btn" onclick="cancelAnimationFrame(specAnim);leaveRoom();" style="flex:1;padding:12px">🚪 Leave Room</button>`;
+    }
+    
+    // Clean up old leave button
+    const oldBtn=$('specLeaveBtn');if(oldBtn)oldBtn.remove();
   }
 }
 

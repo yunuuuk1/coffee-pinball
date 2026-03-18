@@ -187,7 +187,7 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
 <div class="hdr"><h1>☕ Coffee Pinball 🔮</h1><div class="dv"></div></div>
 
 <!-- ═══ MAIN MENU ═══ -->
-<div id="mainMenu" style="display:none">
+<div id="mainMenu">
   <button class="menu-btn menu-solo" onclick="goSolo()">🎮 Solo Play<div class="menu-sub">Play offline with friends</div></button>
   <button class="menu-btn menu-create" onclick="showCreateRoom()">🏠 Create Room<div class="menu-sub">Host a game & invite others</div></button>
   <button class="menu-btn menu-join" onclick="showJoinScreen()">🚪 Join Room<div class="menu-sub">Enter with invite code</div></button>
@@ -1265,6 +1265,7 @@ async function createRoom(){
   if(!nick){$('hostNick').style.borderColor='#ef4444';return;}
   
   $('createBtn').disabled=true;$('createBtn').textContent='Creating...';
+  if(!db){alert('Firebase not connected. Please refresh.');$('createBtn').disabled=false;$('createBtn').textContent='🏠 Create Room';return;}
   isHost=true;myNick=nick;
   roomId=genRoomCode();
   
@@ -1301,6 +1302,7 @@ async function joinRoom(){
   if(!nick){$('joinNick').style.borderColor='#ef4444';return;}
   
   $('joinBtn').disabled=true;$('joinBtn').textContent='Joining...';
+  if(!db){alert('Firebase not connected. Please refresh.');$('joinBtn').disabled=false;$('joinBtn').textContent='🚪 Join Room';return;}
   isHost=false;myNick=nick;roomId=code;
   
   try{
@@ -1871,13 +1873,15 @@ async function checkInvite(){
   const params=new URLSearchParams(window.location.search);
   const code=params.get('room');
   if(code){
-    // Show invite landing page
+    // Hide mainMenu, show invite landing page
+    $('mainMenu').style.display='none';
     $('invitePage').style.display='block';
     $('inviteCode').textContent=code.toUpperCase();
     $('inviteStatus').textContent='Loading room info...';
     $('inviteStatus').style.color='#7a6a5a';
     
     // Fetch room info from Firebase
+    if(!db){$('inviteStatus').textContent='⚠️ Connecting...';$('inviteStatus').style.color='#f97316';$('inviteNick').focus();return;}
     try{
       const snap=await db.ref('rooms/'+code.toUpperCase()).once('value');
       if(snap.exists()){
@@ -1964,8 +1968,12 @@ const firebaseConfig = {
   messagingSenderId: "530223256210",
   appId: "1:530223256210:web:fd1bbe2f608af803bacc4b"
 };
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
+// Firebase init with error handling
+let db=null;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db=firebase.database();
+}catch(e){console.warn('Firebase init failed:',e);}
 
 rP();uC();checkInvite();
 
@@ -1988,12 +1996,14 @@ async function saveRecord(){
     scores:scores,
     tiebreaker:hadTB,
     rounds:maxRounds,
-    timestamp:firebase.database.ServerValue.TIMESTAMP
+    timestamp:db?firebase.database.ServerValue.TIMESTAMP:Date.now()
   };
 
   try{
-    await db.ref('games').push(payload);
-    btn.textContent='✅ Saved!';
+    if(db){
+      await db.ref('games').push(payload);
+      btn.textContent='✅ Saved!';
+    }else{throw new Error('no db');}
   }catch(e){
     // Fallback to localStorage
     const hist=JSON.parse(localStorage.getItem('cpHistory')||'[]');
@@ -2006,9 +2016,9 @@ async function saveRecord(){
 async function loadHistory(){
   let data=[];
   try{
-    const snapshot=await db.ref('games').orderByChild('timestamp').once('value');
-    if(snapshot.exists()){
-      snapshot.forEach(child=>{data.push(child.val());});
+    if(db){
+      const snapshot=await db.ref('games').orderByChild('timestamp').once('value');
+      if(snapshot.exists()){snapshot.forEach(child=>{data.push(child.val());});}
     }
   }catch(e){}
   // Also merge localStorage backup

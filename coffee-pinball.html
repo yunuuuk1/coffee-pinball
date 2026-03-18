@@ -10,10 +10,19 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yunuuuk1.github.io/coffee-pinball/coffee-pinball.html">
 <meta name="description" content="Coffee Pinball — Shall we? Join the coffee bet game! ☕">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet"></noscript>
+<script>
+// Failsafe: if anything crashes, show mainMenu
+window.onerror=function(){
+  try{var m=document.getElementById('mainMenu');if(m)m.style.display='block';}catch(e){}
+  return false;
+};
+// Catch Firebase FetchError (promise)
+window.onunhandledrejection=function(e){
+  if(e&&e.reason&&e.reason.name==='FetchError')e.preventDefault();
+};
+</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{min-height:100vh;background:#12100e;display:flex;flex-direction:column;align-items:center;font-family:'Noto Sans KR',sans-serif;color:#e8d5c4;overflow-x:hidden;padding-bottom:40px;-webkit-tap-highlight-color:transparent}
@@ -365,7 +374,19 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
 <button class="cheer-btn" id="cheerBtn" onclick="sendCheer()">👏</button>
 <div class="cheer-count" id="cheerCount">👏 0</div>
 
+<!-- External scripts AFTER HTML so page renders first -->
+
+<!-- These load AFTER HTML renders (non-render-blocking) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="console.warn('Chart.js failed')"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js" onerror="console.warn('Firebase app failed')"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js" onerror="console.warn('Firebase DB failed')"></script>
 <script>
+// Safety: if nothing shows within 2 seconds, force mainMenu visible
+setTimeout(function(){
+  var m=document.getElementById('mainMenu');
+  if(m&&!m.offsetHeight){m.style.display='block';m.style.opacity='1';}
+},2000);
+
 const $=id=>document.getElementById(id);
 const C=['#E8927C','#7CB5E8','#A8D5A2','#F5C563','#C49BE8','#E87CA8','#7CE8D5','#E8C27C','#7C92E8','#B8E87C'];
 const W=500,H=750,BR=6,CUH=70,NH=40,FY=580;

@@ -1620,6 +1620,12 @@ function startSpecCanvas(){
   function dS(){
     if(!specLayout){specAnim=requestAnimationFrame(dS);return;}
     const W=specLayout.W,H=specLayout.H;
+    
+    // During countdown: just draw dark background (matches host — no game elements visible)
+    if(specCountdown&&specCountdown!=='null'&&specCountdown!==null){
+      c.fillStyle='#1a1714';c.fillRect(0,0,W,H);
+      specAnim=requestAnimationFrame(dS);return;
+    }
     const isMegaPhase=specPh==='final';
     const isSlowPhase=specPh==='slowmo';
     const ins=8;
@@ -1633,10 +1639,12 @@ function startSpecCanvas(){
       c.fillStyle='#1a1714';c.fillRect(0,0,W,H);
       // Draw minimal cups for context (same as host continueConfetti)
       if(specLayout.cups){
-        specLayout.cups.forEach(cup=>{
+        specLayout.cups.forEach((cup,i2)=>{
+          const sc2=specCups[i2]||{cl:cup.cl};
+          const cl2=sc2.cl||cup.cl;
           c.beginPath();c.moveTo(cup.x,cup.y);c.lineTo(cup.x+cup.w,cup.y);
           c.lineTo(cup.x+cup.w-ins,cup.y+cup.h);c.lineTo(cup.x+ins,cup.y+cup.h);
-          c.closePath();c.fillStyle='#1e1b18';c.fill();c.strokeStyle=cup.cl+'40';c.lineWidth=1;c.stroke();
+          c.closePath();c.fillStyle='#1e1b18';c.fill();c.strokeStyle=cl2+'40';c.lineWidth=1;c.stroke();
         });
       }
       
@@ -1753,14 +1761,20 @@ function startSpecCanvas(){
       specLayout.obstacles.forEach(o=>{dO(c,o);});
     }
     
-    // Funnel lines
+    // Funnel lines (matches host gF2() exactly)
     if(specLayout.cups&&specLayout.cups.length){
-      const FY2=specLayout.cups[0].y-20;
-      c.save();c.strokeStyle=isSlowPhase?'rgba(239,68,68,0.4)':'rgba(232,146,124,0.3)';c.lineWidth=3;c.setLineDash([6,4]);
-      c.beginPath();c.moveTo(0,FY2);c.lineTo(specLayout.cups[0].x,specLayout.cups[0].y);c.stroke();
-      const lastCup=specLayout.cups[specLayout.cups.length-1];
-      c.beginPath();c.moveTo(W,FY2);c.lineTo(lastCup.x+lastCup.w,lastCup.y);c.stroke();
-      c.setLineDash([]);c.restore();
+      const FY=580;// Same constant as host
+      const fwL={x1:0,y1:FY,x2:specLayout.cups[0].x,y2:specLayout.cups[0].y};
+      const lastC=specLayout.cups[specLayout.cups.length-1];
+      const fwR={x1:W,y1:FY,x2:lastC.x+lastC.w,y2:specLayout.cups[0].y};
+      c.save();c.strokeStyle=isSM?'rgba(239,68,68,0.4)':'rgba(232,146,124,0.3)';c.lineWidth=3;c.setLineDash([6,4]);
+      c.beginPath();c.moveTo(fwL.x1,fwL.y1);c.lineTo(fwL.x2,fwL.y2);c.stroke();
+      c.beginPath();c.moveTo(fwR.x1,fwR.y1);c.lineTo(fwR.x2,fwR.y2);c.stroke();
+      c.setLineDash([]);
+      // Filled area between funnel lines (same as host)
+      c.fillStyle=isSM?'rgba(239,68,68,0.04)':'rgba(232,146,124,0.04)';
+      c.beginPath();c.moveTo(fwL.x1,fwL.y1);c.lineTo(fwL.x2,fwL.y2);c.lineTo(fwR.x2,fwR.y2);c.lineTo(fwR.x1,fwR.y1);c.closePath();c.fill();
+      c.restore();
     }
     
     // Ball trails
@@ -1797,15 +1811,16 @@ function startSpecCanvas(){
     // Cups (matches host draw() exactly)
     const isSM=isSlowPhase||isMegaPhase;// slowmo active flag
     if(specLayout.cups){let mx=0;specCups.forEach(sc=>{if(sc&&sc.fl>mx)mx=sc.fl;});const ins=8;
-      specLayout.cups.forEach((cup,i)=>{const sc=specCups[i]||{fl:0};const isL=sc.fl===mx&&sc.fl>0;
+      specLayout.cups.forEach((cup,i)=>{const sc=specCups[i]||{fl:0,cl:cup.cl};const isL=sc.fl===mx&&sc.fl>0;
+        const cl=sc.cl||cup.cl;// Use sync color (up-to-date), fallback to layout
         // Trapezoid cup shape
         c.beginPath();c.moveTo(cup.x,cup.y);c.lineTo(cup.x+cup.w,cup.y);c.lineTo(cup.x+cup.w-ins,cup.y+cup.h);c.lineTo(cup.x+ins,cup.y+cup.h);c.closePath();c.fillStyle='#1e1b18';c.fill();
         // Border: red glow during slowmo for leader
         if(isL&&isSM){c.strokeStyle='#ef4444';c.lineWidth=2.5;c.save();c.shadowColor='#ef4444';c.shadowBlur=8;c.stroke();c.restore();}
-        else{c.strokeStyle=cup.cl;c.lineWidth=2;c.stroke();}c.shadowBlur=0;
+        else{c.strokeStyle=cl;c.lineWidth=2;c.stroke();}c.shadowBlur=0;
         // Fill level gradient
         if(sc.fl>0&&mx>0){c.save();c.beginPath();c.moveTo(cup.x,cup.y);c.lineTo(cup.x+cup.w,cup.y);c.lineTo(cup.x+cup.w-ins,cup.y+cup.h);c.lineTo(cup.x+ins,cup.y+cup.h);c.closePath();c.clip();
-          const vf=Math.min(sc.fl/Math.max(mx,1),1),fy=cup.y+cup.h*(1-vf);const fg=c.createLinearGradient(0,fy,0,cup.y+cup.h);fg.addColorStop(0,cup.cl+'99');fg.addColorStop(1,cup.cl);c.fillStyle=fg;c.fillRect(cup.x,fy,cup.w,cup.h*vf+2);c.restore();}
+          const vf=Math.min(sc.fl/Math.max(mx,1),1),fy=cup.y+cup.h*(1-vf);const fg=c.createLinearGradient(0,fy,0,cup.y+cup.h);fg.addColorStop(0,cl+'99');fg.addColorStop(1,cl);c.fillStyle=fg;c.fillRect(cup.x,fy,cup.w,cup.h*vf+2);c.restore();}
         // ☕ emoji for leader
         if(isL){c.save();c.globalAlpha=1;c.shadowBlur=0;const cr=cup.w<40?30:cup.w<55?39:57;c.font=cr+'px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#fff';c.fillText('☕',Math.round(cup.x+cup.w/2),Math.round(cup.y-12));c.restore();}
         // Name — red during slowmo for leader (matches host)

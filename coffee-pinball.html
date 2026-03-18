@@ -127,13 +127,6 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
 @keyframes pi{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.05);opacity:1}100%{transform:scale(1);opacity:1}}
 @keyframes dp{from{opacity:.7}to{opacity:1}}
 @keyframes bp{from{border-color:rgba(239,68,68,.3)}to{border-color:rgba(239,68,68,.7)}}
-@keyframes fireGlow{0%{box-shadow:inset 0 0 30px rgba(255,100,0,.6),0 0 20px rgba(255,69,0,.4)}50%{box-shadow:inset 0 0 50px rgba(255,160,0,.8),0 0 40px rgba(255,100,0,.6)}100%{box-shadow:inset 0 0 30px rgba(255,100,0,.6),0 0 20px rgba(255,69,0,.4)}}
-#gw.fire-cheer{animation:fireGlow .4s ease 3;border:3px solid #FF4500;border-radius:12px}
-.cheer-btn{position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#FF4500,#FF8C00);border:none;font-size:28px;cursor:pointer;z-index:50;box-shadow:0 4px 15px rgba(255,69,0,.4);transition:all .2s}
-.cheer-btn:hover{transform:scale(1.1)}
-.cheer-btn:active{transform:scale(.9)}
-.cheer-btn:disabled{opacity:.3;transform:scale(1)}
-.cheer-count{position:fixed;bottom:82px;right:20px;font-size:11px;color:#FF8C00;font-weight:700;z-index:50;text-align:center;width:60px;font-family:'Noto Sans KR',sans-serif}
 @keyframes sp{from{opacity:.4;transform:translate(-50%,-50%) scale(.95)}to{opacity:.8;transform:translate(-50%,-50%) scale(1.05)}}
 @keyframes sk{0%,100%{transform:translate(0,0)}10%{transform:translate(-4px,2px)}20%{transform:translate(4px,-2px)}30%{transform:translate(-2px,-4px)}40%{transform:translate(2px,4px)}50%{transform:translate(-4px,1px)}60%{transform:translate(4px,-1px)}70%{transform:translate(-1px,4px)}80%{transform:translate(1px,-4px)}90%{transform:translate(-2px,2px)}}
 .shake{animation:sk .35s ease}
@@ -168,15 +161,6 @@ canvas{border-radius:12px;background:#1a1714;display:block;width:100%;height:aut
 .cheer-btn:disabled{opacity:.3;transform:scale(1)}
 .cheer-count{position:fixed;bottom:92px;right:32px;font-size:11px;color:#7a6a5a;z-index:50;display:none;text-align:center;font-family:'Noto Sans KR',sans-serif}
 #cheerCanvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:40}
-.cheer-btn{position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;border:none;font-size:28px;cursor:pointer;z-index:50;transition:all .15s;box-shadow:0 4px 15px rgba(0,0,0,.4);display:none}
-.cheer-btn:active{transform:scale(.85)}
-.cheer-btn.cooldown{opacity:.4;cursor:not-allowed}
-.cheer-count{position:fixed;bottom:85px;right:25px;font-size:11px;color:#7a6a5a;z-index:50;display:none;text-align:center;font-family:'Noto Sans KR',sans-serif}
-.cheer-btn{position:fixed;bottom:24px;right:24px;width:64px;height:64px;border-radius:50%;border:none;font-size:28px;cursor:pointer;z-index:50;transition:all .2s;box-shadow:0 4px 20px rgba(0,0,0,.4)}
-.cheer-btn:active{transform:scale(.85)}
-.cheer-btn:disabled{opacity:.3;transform:scale(1)}
-.cheer-count{position:fixed;bottom:92px;right:32px;font-size:12px;color:#7a6a5a;z-index:50;text-align:center;font-family:'Noto Sans KR',sans-serif;font-weight:700}
-#joinScreen{display:none;max-width:500px;width:100%;padding:0 16px;text-align:center}
 .join-input{width:200px;padding:14px;font-size:24px;text-align:center;letter-spacing:6px;text-transform:uppercase;background:#1e1b18;border:2px solid #3b82f6;border-radius:12px;color:#e8d5c4;font-family:'Noto Sans KR',sans-serif;font-weight:700;outline:none}
 .join-input:focus{border-color:#FFD700;box-shadow:0 0 12px rgba(255,215,0,.2)}
 .nick-input{width:80%;padding:10px;font-size:16px;text-align:center;background:#1e1b18;border:2px solid #5a4a3a;border-radius:12px;color:#e8d5c4;font-family:'Noto Sans KR',sans-serif;outline:none;margin:8px 0}

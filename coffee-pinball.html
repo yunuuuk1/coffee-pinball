@@ -6,16 +6,20 @@
 <title>Coffee Pinball ☕</title>
 <!-- Open Graph for link preview (KakaoTalk, Slack, etc.) -->
 <meta property="og:title" content="☕ Coffee Pinball 🔮 — Shall we?">
-<meta property="og:description" content="Who's buying coffee today? Join and find out! ☕🎯">
+<meta property="og:description" content="Coffee run, together! ☕">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yunuuuk1.github.io/coffee-pinball/coffee-pinball.html">
-<meta name="description" content="Coffee Pinball — Shall we? Join the coffee bet game! ☕">
+<meta name="description" content="Coffee Pinball — Shall we? Coffee run, together! ☕">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet"></noscript>
 <script>
 // Failsafe: if anything crashes, show mainMenu
 window.onerror=function(){
-  try{var m=document.getElementById('mainMenu');if(m)m.style.display='block';}catch(e){}
+  try{
+    var panels=['createScreen','joinScreen','invitePage','lobby','setup','game','histPanel'];
+    var anyOpen=panels.some(function(id){var el=document.getElementById(id);return el&&el.offsetHeight>0;});
+    if(!anyOpen){var m=document.getElementById('mainMenu');if(m)m.style.display='block';}
+  }catch(e){}
   return false;
 };
 // Catch Firebase FetchError (promise)
@@ -180,7 +184,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 <div class="hdr" style="display:block;text-align:center;padding:18px 20px 4px"><h1 style="font-size:28px;font-weight:900;color:#e8d5c4">☕ Coffee Pinball 🔮</h1><div class="dv" style="width:50px;height:2px;background:linear-gradient(90deg,transparent,#E8927C,transparent);margin:8px auto"></div></div>
 
 <!-- ═══ MAIN MENU ═══ -->
-<div id="mainMenu" style="display:block">
+<div id="mainMenu">
   <button class="menu-btn menu-solo" onclick="goSolo()">🎮 Solo Play<div class="menu-sub">Play offline with friends</div></button>
   <button class="menu-btn menu-create" onclick="showCreateRoom()">🏠 Create Room<div class="menu-sub">Host a game & invite others</div></button>
   <button class="menu-btn menu-join" onclick="showJoinScreen()">🚪 Join Room<div class="menu-sub">Enter with invite code</div></button>
@@ -1927,7 +1931,10 @@ async function checkInvite(){
     $('inviteNick').focus();
     return;
   }
-  $('mainMenu').style.display='block';
+  // Only show mainMenu if nothing else is already visible
+  var panels=['createScreen','joinScreen','invitePage','lobby','setup','game','histPanel'];
+  var anyOpen=panels.some(function(id){var el=document.getElementById(id);return el&&el.style.display!=='none'&&el.offsetHeight>0;});
+  if(!anyOpen)$('mainMenu').style.display='block';
 }
 
 async function joinFromInvite(){
@@ -1974,9 +1981,20 @@ const firebaseConfig = {
 // Firebase init — dynamic loading (never blocks page)
 let db=null;
 
-// Show page immediately
+// Show page immediately (only if no other panel is open)
 try{rP();uC();}catch(e){console.warn('Init:',e);}
-document.getElementById('mainMenu').style.display='block';
+// If invite URL, hide mainMenu immediately and show invite page
+if(window.location.search.includes('room=')){
+  document.getElementById('mainMenu').style.display='none';
+  document.getElementById('invitePage').style.display='block';
+  var code2=new URLSearchParams(window.location.search).get('room');
+  if(code2)document.getElementById('inviteCode').textContent=code2.toUpperCase();
+}else{
+  // Normal load — show mainMenu if nothing else is open
+  (function(){var panels=['createScreen','joinScreen','invitePage','lobby','setup','game','histPanel'];
+  var anyOpen=panels.some(function(id){var el=document.getElementById(id);return el&&el.style.display!==''&&el.style.display!=='none'&&el.offsetHeight>0;});
+  if(!anyOpen)document.getElementById('mainMenu').style.display='block';})();
+}
 // Safety: force show after 2s ONLY if nothing else is visible
 setTimeout(function(){
   var panels=['mainMenu','invitePage','lobby','setup','game','histPanel'];

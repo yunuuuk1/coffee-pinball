@@ -1619,6 +1619,7 @@ function startSpecCanvas(){
   
   function dS(){
     if(!specLayout){specAnim=requestAnimationFrame(dS);return;}
+    try{
     const W=specLayout.W,H=specLayout.H;
     
     // During countdown: just draw dark background (matches host — no game elements visible)
@@ -1721,6 +1722,7 @@ function startSpecCanvas(){
     const grav=isMegaPhase?GFB:isSlowPhase?GS:GN;
     
     specBalls.forEach(b=>{
+      if(isNaN(b.vx))b.vx=0;if(isNaN(b.vy))b.vy=0;
       b.vy+=grav;b.x+=b.vx;b.y+=b.vy;
       // Wall wrap
       if(b.x<-BR*2){b.x=W+BR;}else if(b.x>W+BR*2){b.x=-BR;}
@@ -1842,6 +1844,7 @@ function startSpecCanvas(){
     
     // Red border, countdown, FINAL text, event toast — all via HTML overlays (identical to host)
     
+    }catch(e){console.warn('specDraw:',e);}
     specAnim=requestAnimationFrame(dS);
   }
   dS();
@@ -1849,6 +1852,7 @@ function startSpecCanvas(){
 
 function updateSpectator(gs){
   if(!gs)return;
+  try{
   specPh=gs.phase||'';specRem=gs.remaining||0;specLd=gs.leader||'';specEv=gs.lastEvent||'';
   specRedBorder=gs.redBorder||false;specShaking=gs.shaking||false;
   if(gs.countdown!==undefined)specCountdown=gs.countdown;
@@ -1895,7 +1899,8 @@ function updateSpectator(gs){
     specTgt=gs.balls;
     // Match ball count
     while(specBalls.length<specTgt.length){
-      const nb={...specTgt[specBalls.length],tr:[]};
+      const t=specTgt[specBalls.length];
+      const nb={x:t.x,y:t.y,vx:t.vx||0,vy:t.vy||0,tp:t.tp,tr:[]};
       specBalls.push(nb);
     }
     specBalls.length=specTgt.length;
@@ -1937,6 +1942,7 @@ function updateSpectator(gs){
     const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
     if(roomRef)roomRef.child('layout').once('value').then(snap=>{specLayout=snap.val();const cv=$('cv');if(specLayout){cv.width=specLayout.W;cv.height=specLayout.H;}cv.style.display='';startSpecCanvas();});
   }
+  }catch(e){console.warn('updateSpec:',e);}
 }
 
 // Called from Phase 2→3 transition (frame-based = same timing as host's sR())

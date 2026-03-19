@@ -2339,6 +2339,11 @@ function startSpecCanvas(){
         if(specDramaFrame>=120){specResultPhase=3;specDramaFrame=0;showSpecResult();}
       }
       else if(specResultPhase===3){
+        // Keep spawning confetti slowly
+        if(specConfetti.length<40){
+          const colors3=['#E8927C','#7CB5E8','#A8D5A2','#F5C563','#C49BE8','#E87CA8','#FFD700','#ef4444','#22c55e','#fff'];
+          for(let i=0;i<8;i++){specConfetti.push({x:Math.random()*CANVAS_W,y:-10-Math.random()*40,vx:(Math.random()-.5)*3,vy:1+Math.random()*2,r:2+Math.random()*3,rot:Math.random()*360,rv:(Math.random()-.5)*6,cl:colors3[Math.floor(Math.random()*colors3.length)],lf:150+Math.random()*100,shape:Math.random()>.5?'rect':'circle'});}
+        }
         specConfetti=specConfetti.filter(cf=>{cf.x+=cf.vx;cf.y+=cf.vy;cf.vy+=.04;cf.rot+=cf.rv;cf.vx*=.99;cf.lf--;return cf.lf>0&&cf.y<CANVAS_H+50;});
         c.save();c.fillStyle='rgba(0,0,0,.75)';c.fillRect(0,0,CANVAS_W,CANVAS_H);
         c.globalCompositeOperation='destination-out';

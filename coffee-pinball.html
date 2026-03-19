@@ -1306,7 +1306,7 @@ function shuffleCups(){
       ctx.restore();
     }
     if(t<1){shuffleAnimId=requestAnimationFrame(animFrame);}
-    else{shuffleAnimId=null;drawCupPreview();playTone(900,.18,'sine',.15);setTimeout(()=>playTone(1200,.15,'sine',.12),80);}
+    else{shuffleAnimId=null;drawCupPreview();playTone(900,.18,'sine',.15);setTimeout(()=>playTone(1200,.15,'sine',.12),80);if(roomRef&&isHost){roomRef.child('cupPreview').set({cups:cups.map(c=>({nm:c.nm,cl:c.cl})),shuffled:Date.now()});}}
   }
   // Start sound: descending whoosh
   playTone(600,.12,'sine',.15);setTimeout(()=>playTone(400,.1,'sine',.12),50);setTimeout(()=>playTone(250,.1,'sine',.1),100);
@@ -1315,10 +1315,12 @@ function shuffleCups(){
 function showCupPreview(){
   $('cupPreview').style.display='flex';
   drawCupPreview();
+  if(roomRef&&isHost){roomRef.child('cupPreview').set({cups:cups.map(c=>({nm:c.nm,cl:c.cl}))});}
 }
 function confirmCups(){
   $('cupPreview').style.display='none';
   if(shuffleAnimId){cancelAnimationFrame(shuffleAnimId);shuffleAnimId=null;}
+  if(roomRef&&isHost){roomRef.child('cupPreview').set(null);roomRef.child('layout/cups').set(cups.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h})));}
   countdown(()=>{startRec();startBGM();animate();startDropTimer();});
 }
 function cancelPreview(){
@@ -1695,7 +1697,7 @@ if(roomRef&&isHost){
 showCupPreview();}
 function back(){cancelAnimationFrame(animFrameId);clearInterval(dropTimer);stopRec();stopBGM();
 if(origPlayers){players=origPlayers;}isTiebreaker=false;origPlayers=null;origCumScores=null;origColors=null;tbRound=0;
-isSlowmo=false;isEnded=false;isFinalBomb=false;finalBombFrame=0;finalBombSpawned=false;currentGravity=GRAVITY_NORMAL;particles=[];resultPhase=0;confetti=[];dramaFrame=0;if(_confettiLoop){cancelAnimationFrame(_confettiLoop);_confettiLoop=null;}
+isSlowmo=false;isEnded=false;isFinalBomb=false;finalBombFrame=0;finalBombSpawned=false;currentGravity=GRAVITY_NORMAL;particles=[];resultPhase=0;confetti=[];dramaFrame=0;if(_confettiLoop){cancelAnimationFrame(_confettiLoop);_confettiLoop=null;}specCupPreview=null;specCupPrevAnim=null;
 $('game').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('cd').style.display='none';$('roundSum').style.display='none';$('cupPreview').style.display='none';
 // Clean up spectator
 const spec=$('specOverlay');if(spec)spec.remove();
@@ -1729,7 +1731,7 @@ function goHomeFromInvite(){
   // Clear invite URL and go to main menu
   window.history.replaceState({},'',window.location.pathname);
   // Clean up any leftover room state from invite
-  if(roomRef){try{roomRef.child('players').off();roomRef.child('status').off();roomRef.child('gameState').off();}catch(e){console.warn('goHomeFromInvite cleanup:',e);}}
+  if(roomRef){try{roomRef.child('players').off();roomRef.child('status').off();roomRef.child('gameState').off();roomRef.child('cupPreview').off();}catch(e){console.warn('goHomeFromInvite cleanup:',e);}}
   roomRef=null;roomId=null;isHost=false;
   userNav=false;
   showScreen('mainMenu');
@@ -1737,7 +1739,7 @@ function goHomeFromInvite(){
 
 function createFromInvite(){
   window.history.replaceState({},'',window.location.pathname);
-  if(roomRef){try{roomRef.child('players').off();roomRef.child('status').off();roomRef.child('gameState').off();}catch(e){console.warn('createFromInvite cleanup:',e);}}
+  if(roomRef){try{roomRef.child('players').off();roomRef.child('status').off();roomRef.child('gameState').off();roomRef.child('cupPreview').off();}catch(e){console.warn('createFromInvite cleanup:',e);}}
   roomRef=null;roomId=null;isHost=false;
   userNav=true;
   showScreen('createScreen');
@@ -1943,7 +1945,7 @@ function listenRoom(){
       if(specAnim){cancelAnimationFrame(specAnim);specAnim=null;}
       hideCheerBtn();
       alert('Host has left the room.');
-      roomRef.child('players').off();roomRef.child('status').off();roomRef.child('gameState').off();
+      roomRef.child('players').off();roomRef.child('status').off();roomRef.child('gameState').off();roomRef.child('cupPreview').off();
       roomRef=null;roomId=null;
       backToMenu();
     }
@@ -1953,6 +1955,16 @@ function listenRoom(){
   roomRef.child('gameState').on('value',snap=>{
     const gs=snap.val();
     if(gs&&!isHost)updateSpectator(gs);
+  });
+
+  // Listen for cup preview (spectator sees host's cup shuffle)
+  roomRef.child('cupPreview').on('value',snap=>{
+    const data=snap.val();
+    if(isHost)return;
+    if(data&&specCupPreview&&data.shuffled&&data.shuffled!==specCupPreview.shuffled){
+      specCupPrevAnim={oldCups:specCupPreview.cups,start:performance.now(),duration:700};
+    }
+    specCupPreview=data;
   });
 }
 
@@ -2111,6 +2123,7 @@ async function leaveRoom(){
     roomRef.child('players').off();
     roomRef.child('status').off();
     roomRef.child('gameState').off();
+    roomRef.child('cupPreview').off();
     if(isHost){
       // Notify spectators before removing room
       try{await roomRef.child('status').set('host_left');}catch(e){}
@@ -2224,6 +2237,7 @@ let specRedBorder=false,specCountdown=null,specShaking=false;
 let specResultPhase=0,specDramaFrame=0,specConfetti=[];
 let specWinnerColor='#FFD700',specLastEvent='';
 let specResultDone=false;// Prevents re-triggering result after Play Again reset
+let specCupPreview=null,specCupPrevAnim=null;
 
 function showSpectator(){userNav=true;
   showScreen('game');$('rs').style.display='none';$('roundSum').style.display='none';
@@ -2234,7 +2248,7 @@ function showSpectator(){userNav=true;
   const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
   const sl=$('specLive');if(sl)sl.remove();
   const cv=$('cv');cv.style.display='';cv.width=500;cv.height=700;
-  specResultShown=false;specWinner='';specResultPhase=0;specDramaFrame=0;specConfetti=[];specResultDone=false;specBalls=[];specTargetBalls=[];specLastEvent='';window._specResultData=null;
+  specResultShown=false;specWinner='';specResultPhase=0;specDramaFrame=0;specConfetti=[];specResultDone=false;specBalls=[];specTargetBalls=[];specLastEvent='';window._specResultData=null;specCupPreview=null;specCupPrevAnim=null;
   // Enable cheering for spectators
   resizeCheerCanvas();showCheerBtn();
   function tryLoad(){
@@ -2265,7 +2279,52 @@ function startSpecCanvas(){
       c.fillStyle='#1a1714';c.fillRect(0,0,CANVAS_W,CANVAS_H);
       specAnim=requestAnimationFrame(dS);return;
     }
-    
+
+    // Cup preview overlay (before game starts — synced from host)
+    if(specCupPreview&&specResultPhase===0){
+      c.fillStyle='#1a1714';c.fillRect(0,0,CANVAS_W,CANVAS_H);
+      const cpCups=specCupPreview.cups;
+      const cpN=cpCups.length;
+      const cpMargin=40,cpW=(CANVAS_W-cpMargin*2)/cpN,cpH=70,cpY=CANVAS_H/2-cpH/2,cpIns=6;
+      // Title
+      c.font='bold 24px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#E8927C';
+      c.fillText('☕ Cup Order',CANVAS_W/2,cpY-40);
+      if(specCupPrevAnim){
+        // Shuffle animation (shrink → jitter → expand)
+        const at=Math.min((performance.now()-specCupPrevAnim.start)/specCupPrevAnim.duration,1);
+        for(let i=0;i<cpN;i++){
+          const cx=cpMargin+i*cpW;
+          let nm,cl,ox=0,alpha=1;
+          if(at<0.3){const p=at/0.3,ease=p*p;nm=specCupPrevAnim.oldCups[i]?specCupPrevAnim.oldCups[i].nm:'?';cl=specCupPrevAnim.oldCups[i]?specCupPrevAnim.oldCups[i].cl:'#E8927C';ox=(CANVAS_W/2-(cx+cpW/2))*ease*0.6;alpha=1-ease*0.4;}
+          else if(at<0.6){nm='?';cl='#E8927C';ox=(CANVAS_W/2-(cx+cpW/2))*0.6+(Math.random()-.5)*12;alpha=0.6+Math.random()*0.2;}
+          else{const p=(at-0.6)/0.4,ease=1-Math.pow(1-p,3);nm=cpCups[i].nm;cl=cpCups[i].cl;ox=(CANVAS_W/2-(cx+cpW/2))*0.6*(1-ease);alpha=0.6+ease*0.4;}
+          c.save();c.globalAlpha=alpha;const dx=cx+ox;
+          c.beginPath();c.moveTo(dx,cpY);c.lineTo(dx+cpW,cpY);c.lineTo(dx+cpW-cpIns,cpY+cpH);c.lineTo(dx+cpIns,cpY+cpH);c.closePath();
+          c.fillStyle='#1e1b18';c.fill();c.strokeStyle=cl;c.lineWidth=2.5;c.stroke();
+          let fs=cpW<50?13:cpW<70?16:20;c.fillStyle='#e8d5c4';c.font=`bold ${fs}px "Noto Sans KR",sans-serif`;c.textAlign='center';
+          let dn=nm;if(nm!=='?'&&c.measureText(dn).width>cpW-10)dn=dn.substring(0,3)+'…';
+          c.fillText(dn,dx+cpW/2,cpY+cpH/2+fs/3);c.restore();
+        }
+        if(at>=1)specCupPrevAnim=null;
+      }else{
+        // Static cups
+        for(let i=0;i<cpN;i++){
+          const cx=cpMargin+i*cpW,cl=cpCups[i].cl,nm=cpCups[i].nm;
+          c.beginPath();c.moveTo(cx,cpY);c.lineTo(cx+cpW,cpY);c.lineTo(cx+cpW-cpIns,cpY+cpH);c.lineTo(cx+cpIns,cpY+cpH);c.closePath();
+          c.fillStyle='#1e1b18';c.fill();c.strokeStyle=cl;c.lineWidth=2.5;c.stroke();
+          let fs=cpW<50?13:cpW<70?16:20;c.fillStyle='#e8d5c4';c.font=`bold ${fs}px "Noto Sans KR",sans-serif`;c.textAlign='center';
+          let dn=nm;if(c.measureText(dn).width>cpW-10)dn=dn.substring(0,3)+'…';
+          c.fillText(dn,cx+cpW/2,cpY+cpH/2+fs/3);
+          c.fillStyle='#9a8a7a';c.font='11px "Noto Sans KR",sans-serif';
+          c.fillText('#'+(i+1),cx+cpW/2,cpY+cpH+18);
+        }
+      }
+      // Info text
+      c.font='14px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#9a8a7a';
+      c.fillText('Host is setting cup order...',CANVAS_W/2,cpY+cpH+50);
+      specAnim=requestAnimationFrame(dS);return;
+    }
+
     try{
     const isMegaPhase=specPhase==='final';
     const isSlowPhase=specPhase==='slowmo';

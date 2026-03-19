@@ -1234,6 +1234,7 @@ function drawCupPreview(){
 let shuffleAnimId=null;
 function shuffleCups(){
   if(shuffleAnimId)return;// prevent double click
+  initAudio();
   const cv=$('cpCanvas'),ctx=cv.getContext('2d');
   const n=players.length,pw=cv.width,ph=cv.height;
   const margin=20,cupW=(pw-margin*2)/n,cupH=70,cupY=20,ins=6;

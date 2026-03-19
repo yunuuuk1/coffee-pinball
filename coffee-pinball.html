@@ -668,7 +668,7 @@ let bgmOsc=null,bgmGain=null,bgmLfo=null;
 
 // ═══ AUDIO ═══
 let audioCtx=null;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}
 function playTone(f,d,t,v){if(!audioCtx||muted)return;try{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t||'sine';o.frequency.value=f;g.gain.setValueAtTime(v||.08,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d);}catch(e){}}
 function soundPing(){playTone(800+Math.random()*400,.04,'triangle',.03);}
 function soundCup(){playTone(500,.08,'sine',.06);}
@@ -1254,10 +1254,10 @@ function shuffleCups(){
       sfxPhase=curPhase;
       if(curPhase===1){
         // Jitter phase: rapid shuffling clicks
-        for(let i=0;i<5;i++)setTimeout(()=>playTone(400+Math.random()*300,.03,'triangle',.04),i*40);
+        for(let i=0;i<5;i++)setTimeout(()=>playTone(400+Math.random()*300,.05,'triangle',.12),i*40);
       }else if(curPhase===2){
         // Expand phase: rising tone
-        playTone(500,.08,'sine',.05);setTimeout(()=>playTone(700,.08,'sine',.05),60);
+        playTone(500,.1,'sine',.15);setTimeout(()=>playTone(700,.1,'sine',.12),60);
       }
     }
     ctx.clearRect(0,0,pw,ph);
@@ -1296,10 +1296,10 @@ function shuffleCups(){
       ctx.restore();
     }
     if(t<1){shuffleAnimId=requestAnimationFrame(animFrame);}
-    else{shuffleAnimId=null;drawCupPreview();playTone(900,.15,'sine',.07);setTimeout(()=>playTone(1200,.12,'sine',.05),80);}
+    else{shuffleAnimId=null;drawCupPreview();playTone(900,.18,'sine',.15);setTimeout(()=>playTone(1200,.15,'sine',.12),80);}
   }
   // Start sound: descending whoosh
-  playTone(600,.1,'sine',.06);setTimeout(()=>playTone(400,.08,'sine',.04),50);setTimeout(()=>playTone(250,.08,'sine',.03),100);
+  playTone(600,.12,'sine',.15);setTimeout(()=>playTone(400,.1,'sine',.12),50);setTimeout(()=>playTone(250,.1,'sine',.1),100);
   shuffleAnimId=requestAnimationFrame(animFrame);
 }
 function showCupPreview(){

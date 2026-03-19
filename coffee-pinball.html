@@ -693,7 +693,7 @@ function startBGM(){
   bgmOsc.connect(bgmGain);bgmOsc.start();bgmLfo.start();}catch(e){}}
 function stopBGM(){try{if(bgmOsc){bgmOsc.stop();bgmOsc=null;}if(bgmLfo){bgmLfo.stop();bgmLfo=null;}}catch(e){}}
 function setBGMTense(){try{if(bgmOsc){bgmOsc.frequency.value=80;bgmLfo.frequency.value=2;}if(bgmGain)bgmGain.gain.value=.06;}catch(e){}}
-function togMute(){muted=!muted;$('muB').textContent=muted?'🔇':'🔊';saveSettings({muted});if(muted)stopBGM();else if(!isEnded&&dropCount>0)startBGM();}
+function togMute(){muted=!muted;const mb=$('muB');if(mb)mb.textContent=muted?'🔇':'🔊';saveSettings({muted});if(muted)stopBGM();else if(!isEnded&&dropCount>0)startBGM();}
 
 // ═══ SETUP ═══
 function updateDropDisplay(){const v=$('nS').value,n=players.filter(p=>p.trim()).length||players.length;$('nD').textContent=v;$('tD').textContent=`Total: ${v} × ${n} = ${v*players.length}`;saveSettings({dropsPerPlayer:+v});}
@@ -1102,7 +1102,7 @@ function startRound(){
   $('rs').style.display='none';$('roundSum').style.display='none';
   $('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');
 
-  $('nxBtn').style.display='none';$('reBtn').style.display='none';
+  const nxB=$('nxBtn'),reB=$('reBtn');if(nxB)nxB.style.display='none';if(reB)reB.style.display='none';
   $('rinfo').style.display=maxRounds>1?'block':'none';
   isSlowmo=false;isEnded=false;currentGravity=GRAVITY_NORMAL;settleCount=0;particles=[];timeline=[];prevLeader=-1;isFinalBomb=false;finalBombFrame=0;finalBombSpawned=false;preMegaLeader=-1;resultPhase=0;confetti=[];dramaFrame=0;
   if(currentRound===1)gameStats={goldCount:0,bombCount:0,megaGoldCount:0,megaBombCount:0,startTime:Date.now()};
@@ -1176,7 +1176,7 @@ function startTiebreaker(winners){
     // Reset game state
     $('rs').style.display='none';$('roundSum').style.display='none';
     $('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');
-    $('nxBtn').style.display='none';$('reBtn').style.display='none';
+    const nxB2=$('nxBtn'),reB2=$('reBtn');if(nxB2)nxB2.style.display='none';if(reB2)reB2.style.display='none';
     $('rinfo').style.display='none';
     isSlowmo=false;isEnded=false;currentGravity=GRAVITY_NORMAL;settleCount=0;particles=[];timeline=[];prevLeader=-1;isFinalBomb=false;finalBombFrame=0;finalBombSpawned=false;preMegaLeader=-1;resultPhase=0;confetti=[];dramaFrame=0;
     
@@ -1589,34 +1589,26 @@ function animate(){updatePhysics();draw();if(!isEnded)animFrameId=requestAnimati
 function showResult(){if(!winner)return;isSlowmo=false;$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');
 
 let wasTB=false;
-let tbScoreInfo=null;// store TB result for display
-// If tiebreaker mode, restore original players
+let tbScoreInfo=null;
 if(isTiebreaker){
   wasTB=true;
   const tbWinnerNm=winner.nm;const tbWinnerCl=winner.cl;
   const tbWinnerTied=winner.tied;
-  // Save tiebreaker scores for display
   tbScoreInfo={};
   cups.forEach(c=>{tbScoreInfo[c.nm]=c.fl;});
-  // Find winner's original score from cumScores
   const origIdx=origPlayers.findIndex(n=>n.trim()===tbWinnerNm);
   const origScore=origIdx>=0?origCumScores[origIdx]:0;
-  // Restore original player list and colors
   players=origPlayers;cumScores=origCumScores;
   if(origColors){for(let i=0;i<origColors.length;i++)COLORS[i]=origColors[i];}
-  // Set winner with correct score
   winner={nm:tbWinnerNm,cl:tbWinnerCl,fl:origScore,tied:tbWinnerTied};
   isTiebreaker=false;origPlayers=null;origCumScores=null;origColors=null;
-  
-  // Restore game settings
   dropsPerPlayer=+$('nS').value;maxBalls=dropsPerPlayer*players.length;const cv3=+$('cS').value;goldProb=CHAOS_LEVELS[cv3].g;bombProb=CHAOS_LEVELS[cv3].b;
 }
 
-// Save round scores (skip if from tiebreaker)
 if(!wasTB){cups.forEach((c,i)=>{if(i<cumScores.length)cumScores[i]+=c.fl;});}
 $('rs').style.display='block';
 
-// Winner name display
+// Winner name
 if(winner.tied){
   $('wN').textContent=winner.tied.map(w=>w.nm).join(' & ');
   $('wN').style.color='#FFD700';
@@ -1624,41 +1616,39 @@ if(winner.tied){
   $('wN').textContent=winner.nm;$('wN').style.color=winner.cl;
 }
 
-// Score display — show TB result if applicable
-if(wasTB&&tbScoreInfo){
-  const tbScores=Object.entries(tbScoreInfo).map(([nm,sc])=>`${nm}:${sc}`).join(' vs ');
-  $('wSc').textContent=`${winner.fl} drops (TB: ${tbScores})`;
-}else{
-  $('wSc').textContent=`${winner.fl} drops`;
-}
+// Score
+$('wSc').textContent=`${winner.fl} drops`;
 
-// Scoreboard
-if(wasTB){
-  const sb=$('scb');sb.innerHTML='';
-  const allPlayers=players.map((n,i)=>({nm:n.trim(),fl:cumScores[i],cl:COLORS[i%COLORS.length]})).sort((a,b)=>{
-    if(b.fl!==a.fl)return b.fl-a.fl;
-    // Same score? TB winner ranks higher
-    if(a.nm===winner.nm)return -1;if(b.nm===winner.nm)return 1;
-    return 0;
-  });
-  allPlayers.forEach((p,i)=>{
-    const isW=p.nm===winner.nm;
-    const tbTag=tbScoreInfo&&tbScoreInfo[p.nm]!==undefined?` (TB:${tbScoreInfo[p.nm]})`:'';
-    const r=document.createElement('span');r.className='sbr2';r.style.color=p.cl;r.style.borderColor=isW?p.cl:'#2d2319';r.style.background=isW?p.cl+'15':'transparent';
-    r.textContent=`${i===0?'🥇':i===1?'🥈':i===2?'🥉':' '} ${p.nm}:${p.fl}${isW?' ⚡':''}${tbTag}`;sb.appendChild(r);});
-}else{
-const sb=$('scb');sb.innerHTML='';const so=[...cups].sort((a,b)=>b.fl-a.fl);
-so.forEach((c,i)=>{const idx=cups.indexOf(c);const sd=splashDamage[idx]||[];
-const sdTxt=sd.length?` (${sd.map(e=>`${e.tp}${e.v>0?'+':''}${e.v}`).join(', ')})`:'';
-const r=document.createElement('span');r.className='sbr2';r.style.color=c.cl;r.style.borderColor=c===winner?c.cl:'#2d2319';r.style.background=c===winner?c.cl+'15':'transparent';r.textContent=`${i===0?'🥇':i===1?'🥈':i===2?'🥉':' '} ${c.nm}:${c.fl}${sdTxt}`;sb.appendChild(r);});
-}
-// Timeline
-const te=$('timeline');te.innerHTML='';if(timeline.length>0){const h=document.createElement('div');h.style.cssText='font-size:12px;color:#E8927C;font-weight:600;margin-bottom:4px';h.textContent='⚡ Highlights';te.appendChild(h);timeline.forEach(ev=>{const it=document.createElement('div');it.className='ti';it.style.color=ev.cl;it.textContent=ev.t;te.appendChild(it);});}
-// Show buttons
-if(currentRound<maxRounds){$('nxBtn').style.display='inline-block';$('reBtn').style.display='none';}
-else if(maxRounds>1){$('nxBtn').style.display='none';$('reBtn').style.display='none';setTimeout(showFinal,1500);}
-else{$('reBtn').style.display='inline-block';$('nxBtn').style.display='none';}
-$('rpBtn').style.display=replayData&&replayData.frames.length>0?'inline-block':'none';}
+// Scoreboard (same style as spectator)
+const sb=$('scb');sb.innerHTML='';
+const so=wasTB?players.map((n,i)=>({nm:n.trim(),fl:cumScores[i],cl:COLORS[i%COLORS.length]})).sort((a,b)=>{if(b.fl!==a.fl)return b.fl-a.fl;if(a.nm===winner.nm)return -1;if(b.nm===winner.nm)return 1;return 0;}):[...cups].sort((a,b)=>b.fl-a.fl);
+so.forEach((c,i)=>{
+  const isW=wasTB?c.nm===winner.nm:c===winner;
+  const idx=wasTB?-1:cups.indexOf(c);const sd=(!wasTB&&splashDamage[idx])||[];
+  const sdTxt=sd.length?` (${sd.map(e=>`${e.tp}${e.v>0?'+':''}${e.v}`).join(', ')})`:'';
+  const r=document.createElement('span');r.className='sbr2';r.style.color=c.cl;r.style.borderColor=isW?c.cl:'#2d2319';r.style.background=isW?c.cl+'15':'transparent';
+  r.textContent=`${i===0?'🥇':i===1?'🥈':i===2?'🥉':' '} ${c.nm}:${c.fl}${sdTxt}`;sb.appendChild(r);
+});
+
+// Highlights
+const te=$('tl');te.innerHTML='';if(timeline.length>0){const h=document.createElement('div');h.style.cssText='font-size:12px;color:#E8927C;font-weight:600;margin-bottom:4px';h.textContent='⚡ Highlights';te.appendChild(h);timeline.forEach(ev=>{const it=document.createElement('div');it.className='ti';it.style.color=ev.cl;it.textContent=ev.t;te.appendChild(it);});}
+
+// Buttons — clean style matching spectator layout
+const gbt=document.querySelector('.gbt');
+if(gbt){
+  let btns='';
+  if(currentRound<maxRounds){
+    btns+=`<button class="leave-btn" onclick="nextRound()" style="flex:1;padding:12px;border-color:#E8927C;color:#E8927C">Next Round →</button>`;
+  }else if(maxRounds>1){
+    setTimeout(showFinal,1500);
+  }else{
+    btns+=`<button class="leave-btn" onclick="restart()" style="flex:1;padding:12px;border-color:#E8927C;color:#E8927C">🔄 Play Again</button>`;
+  }
+  if(replayData&&replayData.frames.length>0)btns+=`<button class="leave-btn" onclick="playReplay()" style="flex:1;padding:12px;border-color:#7CB5E8;color:#7CB5E8">🎬 Replay</button>`;
+  btns+=`<button class="leave-btn" onclick="saveRecord()" style="flex:1;padding:12px;border-color:#22c55e;color:#22c55e">💾 Save</button>`;
+  btns+=`<button class="leave-btn" onclick="back()" style="flex:1;padding:12px;border-color:#9a8a7a;color:#9a8a7a">🏠 Home</button>`;
+  gbt.style.display='flex';gbt.innerHTML=btns;
+}}
 
 function nextRound(){currentRound++;$('rs').style.display='none';startRound();}
 
@@ -1670,10 +1660,11 @@ function showFinal(){
   sorted.forEach((p,i)=>{const r=document.createElement('div');r.className='rst-row'+(i===0?' win':'');
     r.innerHTML=`<span class="rst-name" style="color:${p.cl}">${i===0?'🏆 ':i===1?'🥈 ':i===2?'🥉 ':''}${p.nm}</span><span class="rst-score" style="color:${p.cl}">${p.sc}</span>`;
     tb.appendChild(r);});
-  $('reBtn').style.display='inline-block';}
+  const gbt2=document.querySelector('.gbt');
+  if(gbt2){gbt2.style.display='flex';gbt2.innerHTML=`<button class="leave-btn" onclick="restart()" style="flex:1;padding:12px;border-color:#E8927C;color:#E8927C">🔄 Play Again</button><button class="leave-btn" onclick="back()" style="flex:1;padding:12px;border-color:#9a8a7a;color:#9a8a7a">🏠 Home</button>`;}}
 
 function restart(){resultPhase=0;confetti=[];if(_confettiLoop){cancelAnimationFrame(_confettiLoop);_confettiLoop=null;}
-$('rs').style.display='none';$('roundSum').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');$('nxBtn').style.display='none';
+$('rs').style.display='none';$('roundSum').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');const nxBr=$('nxBtn');if(nxBr)nxBr.style.display='none';
 // Reset tiebreaker
 if(origPlayers){players=origPlayers;}isTiebreaker=false;origPlayers=null;origCumScores=null;origColors=null;tbRound=0;
 // Restore game settings
@@ -2599,7 +2590,7 @@ function showSpecResult(){
       sb.appendChild(r);
     });
   }
-  const te=$('timeline');te.innerHTML='';
+  const te=$('tl');te.innerHTML='';
   if(gs.highlights&&gs.highlights.length){
     const h=document.createElement('div');
     h.style.cssText='font-size:12px;color:#E8927C;font-weight:600;margin-bottom:4px';
@@ -3016,7 +3007,9 @@ setTimeout(function(){
 
 async function saveRecord(){
   if(!winner)return;
-  const btn=$('saveBtn');btn.disabled=true;btn.textContent='💾 Saving...';
+  // Find save button (may be dynamic or static)
+  let btn=$('saveBtn');if(!btn){const gb=document.querySelector('.gbt');if(gb)btn=gb.querySelector('[onclick*="saveRecord"]');}
+  if(btn){btn.disabled=true;btn.textContent='💾 Saving...';}
   
   const now=new Date();
   const dateStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
@@ -3060,14 +3053,14 @@ async function saveRecord(){
   try{
     if(db){
       await db.ref('games').push(payload);
-      btn.textContent='✅ Saved!';
+      if(btn)btn.textContent='✅ Saved!';
     }else{throw new Error('no db');}
   }catch(e){
     const hist=JSON.parse(localStorage.getItem('cpHistory')||'[]');
     hist.push(payload);localStorage.setItem('cpHistory',JSON.stringify(hist));
-    btn.textContent='✅ Saved (local)';
+    if(btn)btn.textContent='✅ Saved (local)';
   }
-  setTimeout(()=>{btn.textContent='💾 Save Record';btn.disabled=false;},2000);
+  if(btn)setTimeout(()=>{btn.textContent='💾 Save';btn.disabled=false;},2000);
 }
 
 async function loadHistory(){

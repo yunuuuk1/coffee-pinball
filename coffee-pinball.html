@@ -1172,8 +1172,21 @@ function shuffleCups(){
   const newCups=cups.map(c=>({nm:c.nm,cl:c.cl}));
   // Animate
   const duration=700,start=performance.now();
+  let sfxPhase=-1;
   function animFrame(now){
     const t=Math.min((now-start)/duration,1);
+    // Phase-based sound effects
+    const curPhase=t<0.3?0:t<0.6?1:2;
+    if(curPhase!==sfxPhase){
+      sfxPhase=curPhase;
+      if(curPhase===1){
+        // Jitter phase: rapid shuffling clicks
+        for(let i=0;i<5;i++)setTimeout(()=>playTone(400+Math.random()*300,.03,'triangle',.04),i*40);
+      }else if(curPhase===2){
+        // Expand phase: rising tone
+        playTone(500,.08,'sine',.05);setTimeout(()=>playTone(700,.08,'sine',.05),60);
+      }
+    }
     ctx.clearRect(0,0,pw,ph);
     for(let i=0;i<n;i++){
       const cx=margin+i*cupW;
@@ -1210,9 +1223,10 @@ function shuffleCups(){
       ctx.restore();
     }
     if(t<1){shuffleAnimId=requestAnimationFrame(animFrame);}
-    else{shuffleAnimId=null;drawCupPreview();playTone(600,.08,'sine',.04);}
+    else{shuffleAnimId=null;drawCupPreview();playTone(900,.15,'sine',.07);setTimeout(()=>playTone(1200,.12,'sine',.05),80);}
   }
-  playTone(300,.1,'sine',.05);
+  // Start sound: descending whoosh
+  playTone(600,.1,'sine',.06);setTimeout(()=>playTone(400,.08,'sine',.04),50);setTimeout(()=>playTone(250,.08,'sine',.03),100);
   shuffleAnimId=requestAnimationFrame(animFrame);
 }
 function showCupPreview(){

@@ -2135,15 +2135,15 @@ async function startRoomGame(){
   
   // Get player names from lobby
   const snap=await roomRef.child('players').once('value');
-  const players=snap.val()||{};
-  const names=Object.values(players).filter(p=>p.online).map(p=>p.name);
-  
+  const pData=snap.val()||{};
+  const names=Object.values(pData).filter(p=>p.online).map(p=>p.name);
+
   if(names.length<2){alert('Need at least 2 players!');return;}
-  
+
   // Set room status
   await roomRef.child('status').set('playing');
-  
-  // Set up game with lobby player names
+
+  // Set up game with lobby player names (update global players array)
   players=names;
   dropsPerPlayer=+$('nS').value||10;maxBalls=dropsPerPlayer*players.length;
   const cv=1;goldProb=CHAOS_LEVELS[cv].g;bombProb=CHAOS_LEVELS[cv].b;

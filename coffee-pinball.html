@@ -959,8 +959,16 @@ function dramaticAnim(){
   }
 }
 // Keep confetti falling after result UI appears
+let _confettiLoop=null;
 function continueConfetti(){
-  if(confetti.length===0)return;
+  if(resultPhase!==3){_confettiLoop=null;return;}
+  // Keep spawning confetti slowly
+  if(confetti.length<40){
+    const colors=['#E8927C','#7CB5E8','#A8D5A2','#F5C563','#C49BE8','#E87CA8','#FFD700','#ef4444','#22c55e','#fff'];
+    for(let i=0;i<8;i++){
+      confetti.push({x:Math.random()*CANVAS_W,y:-10-Math.random()*40,vx:(Math.random()-.5)*3,vy:1+Math.random()*2,r:2+Math.random()*3,rot:Math.random()*360,rv:(Math.random()-.5)*6,cl:colors[Math.floor(Math.random()*colors.length)],lf:150+Math.random()*100,shape:Math.random()>.5?'rect':'circle'});
+    }
+  }
   const cv=$('cv'),c=cv.getContext('2d');
   // Clean canvas — no draw() call to avoid conflicts
   c.clearRect(0,0,CANVAS_W,CANVAS_H);
@@ -1009,7 +1017,7 @@ function continueConfetti(){
   // Animate confetti
   updateConfetti();
   drawConfetti(c);
-  requestAnimationFrame(continueConfetti);
+  _confettiLoop=requestAnimationFrame(continueConfetti);
 }
 
 // ═══ SLOW / SHAKE ═══
@@ -1662,7 +1670,8 @@ function showFinal(){
     tb.appendChild(r);});
   $('reBtn').style.display='inline-block';}
 
-function restart(){$('rs').style.display='none';$('roundSum').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');$('nxBtn').style.display='none';
+function restart(){resultPhase=0;confetti=[];if(_confettiLoop){cancelAnimationFrame(_confettiLoop);_confettiLoop=null;}
+$('rs').style.display='none';$('roundSum').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('et').classList.remove('sh');$('nxBtn').style.display='none';
 // Reset tiebreaker
 if(origPlayers){players=origPlayers;}isTiebreaker=false;origPlayers=null;origCumScores=null;origColors=null;tbRound=0;
 // Restore game settings
@@ -1686,7 +1695,7 @@ if(roomRef&&isHost){
 showCupPreview();}
 function back(){cancelAnimationFrame(animFrameId);clearInterval(dropTimer);stopRec();stopBGM();
 if(origPlayers){players=origPlayers;}isTiebreaker=false;origPlayers=null;origCumScores=null;origColors=null;tbRound=0;
-isSlowmo=false;isEnded=false;isFinalBomb=false;finalBombFrame=0;finalBombSpawned=false;currentGravity=GRAVITY_NORMAL;particles=[];resultPhase=0;confetti=[];dramaFrame=0;
+isSlowmo=false;isEnded=false;isFinalBomb=false;finalBombFrame=0;finalBombSpawned=false;currentGravity=GRAVITY_NORMAL;particles=[];resultPhase=0;confetti=[];dramaFrame=0;if(_confettiLoop){cancelAnimationFrame(_confettiLoop);_confettiLoop=null;}
 $('game').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('cd').style.display='none';$('roundSum').style.display='none';$('cupPreview').style.display='none';
 // Clean up spectator
 const spec=$('specOverlay');if(spec)spec.remove();

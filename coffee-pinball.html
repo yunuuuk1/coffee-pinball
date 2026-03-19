@@ -1253,6 +1253,8 @@ function shuffleCups(){
   // Shuffle
   shuffleCupOrder();rebuildCups();
   const newCups=cups.map(c=>({nm:c.nm,cl:c.cl}));
+  // Send to Firebase IMMEDIATELY so spectators start animation in parallel
+  if(roomRef&&isHost){roomRef.child('cupPreview').set({cups:newCups,shuffled:Date.now()});}
   // Animate
   const duration=700,start=performance.now();
   let sfxPhase=-1;
@@ -1306,7 +1308,7 @@ function shuffleCups(){
       ctx.restore();
     }
     if(t<1){shuffleAnimId=requestAnimationFrame(animFrame);}
-    else{shuffleAnimId=null;drawCupPreview();playTone(900,.18,'sine',.15);setTimeout(()=>playTone(1200,.15,'sine',.12),80);if(roomRef&&isHost){roomRef.child('cupPreview').set({cups:cups.map(c=>({nm:c.nm,cl:c.cl})),shuffled:Date.now()});}}
+    else{shuffleAnimId=null;drawCupPreview();playTone(900,.18,'sine',.15);setTimeout(()=>playTone(1200,.15,'sine',.12),80);}
   }
   // Start sound: descending whoosh
   playTone(600,.12,'sine',.15);setTimeout(()=>playTone(400,.1,'sine',.12),50);setTimeout(()=>playTone(250,.1,'sine',.1),100);
@@ -1953,7 +1955,9 @@ function listenRoom(){
     const data=snap.val();
     if(isHost)return;
     if(data&&specCupPreview&&data.shuffled&&data.shuffled!==specCupPreview.shuffled){
-      specCupPrevAnim={oldCups:specCupPreview.cups,start:performance.now(),duration:700};
+      specCupPrevAnim={oldCups:specCupPreview.cups,start:performance.now(),duration:700,sfxPhase:-1};
+      // Start sound: descending whoosh (same as host)
+      initAudio();playTone(600,.12,'sine',.15);setTimeout(()=>playTone(400,.1,'sine',.12),50);setTimeout(()=>playTone(250,.1,'sine',.1),100);
     }
     specCupPreview=data;
   });
@@ -2283,6 +2287,13 @@ function startSpecCanvas(){
       if(specCupPrevAnim){
         // Shuffle animation (shrink → jitter → expand)
         const at=Math.min((performance.now()-specCupPrevAnim.start)/specCupPrevAnim.duration,1);
+        // Phase-based sound effects (same as host)
+        const curPhase=at<0.3?0:at<0.6?1:2;
+        if(curPhase!==specCupPrevAnim.sfxPhase){
+          specCupPrevAnim.sfxPhase=curPhase;
+          if(curPhase===1){for(let si=0;si<5;si++)setTimeout(()=>playTone(400+Math.random()*300,.05,'triangle',.12),si*40);}
+          else if(curPhase===2){playTone(500,.1,'sine',.15);setTimeout(()=>playTone(700,.1,'sine',.12),60);}
+        }
         for(let i=0;i<cpN;i++){
           const cx=cpMargin+i*cpW;
           let nm,cl,ox=0,alpha=1;
@@ -2296,7 +2307,7 @@ function startSpecCanvas(){
           let dn=nm;if(nm!=='?'&&c.measureText(dn).width>cpW-10)dn=dn.substring(0,3)+'…';
           c.fillText(dn,dx+cpW/2,cpY+cpH/2+fs/3);c.restore();
         }
-        if(at>=1)specCupPrevAnim=null;
+        if(at>=1){playTone(900,.18,'sine',.15);setTimeout(()=>playTone(1200,.15,'sine',.12),80);specCupPrevAnim=null;}
       }else{
         // Static cups
         for(let i=0;i<cpN;i++){

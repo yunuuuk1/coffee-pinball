@@ -669,6 +669,8 @@ let bgmOsc=null,bgmGain=null,bgmLfo=null;
 // ═══ AUDIO ═══
 let audioCtx=null;
 function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}
+// Mobile: unlock audio on first touch/click
+(function(){function unlock(){initAudio();document.removeEventListener('touchstart',unlock,true);document.removeEventListener('click',unlock,true);}document.addEventListener('touchstart',unlock,true);document.addEventListener('click',unlock,true);})();
 function playTone(f,d,t,v){if(!audioCtx||muted)return;try{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t||'sine';o.frequency.value=f;g.gain.setValueAtTime(v||.08,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d);}catch(e){}}
 function soundPing(){playTone(800+Math.random()*400,.04,'triangle',.03);}
 function soundCup(){playTone(500,.08,'sine',.06);}

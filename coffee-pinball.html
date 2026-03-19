@@ -70,6 +70,31 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 .hist-table{width:100%;font-size:11px;color:#c0b0a0;border-collapse:collapse}
 .hist-table th{text-align:left;color:#7a6a5a;padding:4px 6px;border-bottom:1px solid #2d2319;font-weight:400}
 .hist-table td{padding:4px 6px;border-bottom:1px solid #1e1b18}
+.room-tab{padding:8px 14px;border-radius:10px;border:1.5px solid #2d2319;background:#1a1714;color:#c0b0a0;font-size:12px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.room-tab:hover{border-color:#E8927C50}
+.room-tab.active{border-color:#E8927C;background:#E8927C15;color:#E8927C}
+.room-tab .tab-count{font-size:10px;opacity:.6;margin-left:4px}
+.game-card{background:#1e1b18;border:1px solid #2d2319;border-radius:12px;padding:12px;margin-bottom:10px;transition:all .15s}
+.game-card:hover{border-color:#3d3229}
+.game-card .gc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.game-card .gc-date{font-size:11px;color:#7a6a5a}
+.game-card .gc-winner{font-size:15px;font-weight:800;color:#E8927C}
+.game-card .gc-players{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.game-card .gc-player{font-size:11px;padding:2px 8px;border-radius:8px;background:#2d231950;border:1px solid #2d2319;color:#c0b0a0}
+.game-card .gc-player.winner{border-color:#E8927C;color:#E8927C;background:#E8927C10}
+.game-card .gc-scores{font-size:11px;color:#7a6a5a;margin-top:4px}
+.game-card .gc-tb{font-size:10px;color:#ef4444;margin-left:6px}
+.stat-box{text-align:center;padding:8px 12px;background:#1e1b18;border-radius:10px;border:1px solid #2d2319;min-width:70px}
+.stat-box .sv{font-size:18px;font-weight:900;color:#E8927C}
+.stat-box .sl{font-size:10px;color:#7a6a5a;margin-top:2px}
+.game-card .gc-del{background:none;border:none;color:#7a6a5a;font-size:14px;cursor:pointer;padding:2px 6px;border-radius:6px;transition:all .15s}
+.game-card .gc-del:hover{color:#ef4444;background:#ef444415}
+.df-btn{padding:4px 12px;border-radius:8px;border:1px solid #2d2319;background:transparent;color:#7a6a5a;font-size:11px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s}
+.df-btn:hover{border-color:#E8927C50}
+.df-btn.active{border-color:#E8927C;color:#E8927C;background:#E8927C10}
+.room-stat-row{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:#c0b0a0;padding:8px 10px;background:#1e1b18;border-radius:10px;border:1px solid #2d2319}
+.room-stat-row .rs-item{display:flex;align-items:center;gap:4px}
+.room-stat-row .rs-val{font-weight:700;color:#E8927C}
 .streak-badge{display:inline-block;background:#ef4444;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
 #game{display:none;flex-direction:column;align-items:center;width:100%;max-width:520px;padding:0 8px}
 #gw{position:relative;display:inline-block;width:100%}
@@ -350,27 +375,35 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 <div id="histPanel">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <h2 style="font-size:20px;font-weight:900;color:#E8927C">📊 History</h2>
-    <button class="bb2" onclick="backToMenu()" style="padding:6px 14px;font-size:12px">← Back</button>
+    <div style="display:flex;gap:8px">
+      <button class="bb2" id="clearHistBtn" onclick="clearHistory()" style="padding:6px 10px;font-size:11px;color:#ef4444;border-color:#ef4444">🗑️ Clear All</button>
+      <button class="bb2" onclick="backToMenu()" style="padding:6px 14px;font-size:12px">← Back</button>
+    </div>
   </div>
-  <!-- Ranking Chart -->
-  <div class="hist-card">
-    <h3>🏆 Most Coffee Bought</h3>
-    <canvas id="rankChart" height="200"></canvas>
+  <!-- Quick Stats -->
+  <div class="hist-card" id="quickStats" style="margin-bottom:12px">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:#c0b0a0" id="statsRow"></div>
   </div>
-  <!-- Monthly Chart -->
-  <div class="hist-card">
-    <h3>📅 Monthly Stats (<span id="monthYear"></span>)</h3>
-    <canvas id="monthChart" height="180"></canvas>
+  <!-- Room Tabs -->
+  <div id="roomTabs" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px"></div>
+  <!-- Date Filter -->
+  <div id="dateFilterRow" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+    <button class="df-btn active" onclick="setDateFilter('all',this)">All</button>
+    <button class="df-btn" onclick="setDateFilter('today',this)">Today</button>
+    <button class="df-btn" onclick="setDateFilter('week',this)">This Week</button>
+    <button class="df-btn" onclick="setDateFilter('month',this)">This Month</button>
   </div>
-  <!-- Streak -->
-  <div class="hist-card">
-    <h3>🔥 Win Streak</h3>
-    <div id="streakInfo" style="font-size:13px;color:#c0b0a0"></div>
-  </div>
-  <!-- Game History Table -->
-  <div class="hist-card">
-    <h3>📝 Recent Games</h3>
-    <div id="histTable" style="overflow-x:auto"></div>
+  <!-- Room Stats (mini report for selected room) -->
+  <div id="roomStats" style="margin-bottom:10px"></div>
+  <!-- Games List for selected room -->
+  <div id="roomGames"></div>
+  <!-- Charts (collapsed by default) -->
+  <div style="margin-top:12px">
+    <button class="bb2" id="chartToggle" onclick="toggleCharts()" style="width:100%;padding:8px;font-size:12px">📈 Show Charts</button>
+    <div id="chartsArea" style="display:none;margin-top:10px">
+      <div class="hist-card"><h3>🏆 Most Coffee Bought</h3><canvas id="rankChart" height="200"></canvas></div>
+      <div class="hist-card"><h3>📅 Monthly Stats (<span id="monthYear"></span>)</h3><canvas id="monthChart" height="180"></canvas></div>
+    </div>
   </div>
 </div>
 
@@ -1587,6 +1620,7 @@ let specWinner='',specWinnerScore=0,specResultShown=false;
 let specRedBorder=false,specCountdown=null,specShaking=false;
 let specResPhase=0,specDramaF=0,specConfetti=[];
 let specWinnerCl='#FFD700',specLastEv='';
+let specResultDone=false;// Prevents re-triggering result after Play Again reset
 
 function showSpectator(){userNav=true;
   $('lobby').style.display='none';$('invitePage').style.display='none';$('mainMenu').style.display='none';
@@ -1598,7 +1632,7 @@ function showSpectator(){userNav=true;
   const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
   const sl=$('specLive');if(sl)sl.remove();
   const cv=$('cv');cv.style.display='';cv.width=500;cv.height=700;
-  specResultShown=false;specWinner='';specResPhase=0;specDramaF=0;specConfetti=[];specBalls=[];specTgt=[];specLastEv='';
+  specResultShown=false;specWinner='';specResPhase=0;specDramaF=0;specConfetti=[];specResultDone=false;specBalls=[];specTgt=[];specLastEv='';window._specResultData=null;
   // Enable cheering for spectators
   resizeCheerCanvas();showCheerBtn();
   function tryLoad(){
@@ -1924,9 +1958,9 @@ function updateSpectator(gs){
       b.tp=t.tp;
     });
   }else{specBalls=[];specTgt=[];}
-  // Result: start dramatic reveal (matches host timing)
-  if(gs.phase==='result'&&gs.winner&&specResPhase===0){
-    specResPhase=1;specDramaF=0;specConfetti=[];
+  // Result: start dramatic reveal (matches host timing) — only once per game
+  if(gs.phase==='result'&&gs.winner&&specResPhase===0&&!specResultDone){
+    specResPhase=1;specDramaF=0;specConfetti=[];specResultDone=true;
     // Get winner color - prefer explicit winnerCl, fallback to cups search
     let wCl=gs.winnerCl||'#FFD700';
     if(!gs.winnerCl&&gs.cups){for(const cup of gs.cups){if(cup.nm===gs.winner&&cup.cl){wCl=cup.cl;break;}}}
@@ -1939,13 +1973,20 @@ function updateSpectator(gs){
     // Save result data for showSpecResult() (called from Phase 2→3 transition)
     window._specResultData={winner:gs.winner,winnerScore:gs.winnerScore,cups:gs.cups?JSON.parse(JSON.stringify(gs.cups)):[],highlights:gs.highlights||[],splashDmg:gs.splashDmg||[]};
   }
-  // Play Again: host restarted
-  if(gs.phase==='dropping'&&specResultShown){
-    specResultShown=false;specWinner='';specResPhase=0;specDramaF=0;specConfetti=[];specBalls=[];specTgt=[];specLastEv='';
+  // Play Again: host restarted — detect in ALL possible states
+  const isNewGame=gs.phase==='dropping'&&(specResultShown||specResPhase>0);
+  const isCountdownRestart=gs.countdown&&gs.countdown!=='null'&&(specResultShown||specResPhase>0);
+  if(isNewGame||isCountdownRestart){
+    specResultShown=false;specWinner='';specWinnerScore=0;
+    specResPhase=0;specDramaF=0;specConfetti=[];specResultDone=false;
+    specBalls=[];specTgt=[];specLastEv='';
+    window._specResultData=null;
     $('rs').style.display='none';$('so').style.display='none';$('st2').style.display='none';
-    $('et').classList.remove('sh');$('et').style.display='';
+    $('et').classList.remove('sh');$('et').style.display='';$('cd').style.display='none';
     const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
-    if(roomRef)roomRef.child('layout').once('value').then(snap=>{specLayout=snap.val();const cv=$('cv');if(specLayout){cv.width=specLayout.W;cv.height=specLayout.H;}cv.style.display='';startSpecCanvas();});
+    if(isNewGame&&roomRef){
+      roomRef.child('layout').once('value').then(snap=>{specLayout=snap.val();const cv=$('cv');if(specLayout){cv.width=specLayout.W;cv.height=specLayout.H;}cv.style.display='';startSpecCanvas();});
+    }
   }
   }catch(e){console.warn('updateSpec:',e);}
 }
@@ -1953,7 +1994,7 @@ function updateSpectator(gs){
 // Called from Phase 2→3 transition (frame-based = same timing as host's sR())
 function showSpecResult(){
   const gs=window._specResultData;
-  if(!gs)return;
+  if(!gs||specResPhase===0)return;// Already reset or no data
   specResultShown=true;
   $('rs').style.display='block';
   $('wN').textContent=gs.winner||specWinner;
@@ -2344,18 +2385,33 @@ async function saveRecord(){
   const now=new Date();
   const dateStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const timeStr=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  const scores=pl.map((n,i)=>`${n.trim()}:${cumScores[i]}`).join(',');
   const winnerNm=wn.tied?wn.tied.map(w=>w.nm).join('&'):wn.nm;
   const hadTB=tbRound>0?'yes':'no';
+  
+  // Build detailed player list with scores and colors
+  const playerDetails=pl.map((n,i)=>({
+    name:n.trim(),
+    score:cumScores[i]||0,
+    color:C[i%C.length]
+  }));
+  
+  // Get room info (if multiplayer)
+  const rName=roomId?($('roomNameDisplay')?$('roomNameDisplay').textContent:''):'Solo';
+  const hName=roomId?myNick:pl[0]||'';
   
   const payload={
     date:dateStr,
     time:timeStr,
     players:pl.map(n=>n.trim()).join(','),
+    playerDetails:playerDetails,
     winner:winnerNm,
-    scores:scores,
+    scores:pl.map((n,i)=>`${n.trim()}:${cumScores[i]}`).join(','),
     tiebreaker:hadTB,
     rounds:maxRounds,
+    roomName:rName||'Quick Game',
+    hostName:hName,
+    mode:roomId?'online':'solo',
+    id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     timestamp:db?firebase.database.ServerValue.TIMESTAMP:Date.now()
   };
 
@@ -2365,7 +2421,6 @@ async function saveRecord(){
       btn.textContent='✅ Saved!';
     }else{throw new Error('no db');}
   }catch(e){
-    // Fallback to localStorage
     const hist=JSON.parse(localStorage.getItem('cpHistory')||'[]');
     hist.push(payload);localStorage.setItem('cpHistory',JSON.stringify(hist));
     btn.textContent='✅ Saved (local)';
@@ -2390,15 +2445,244 @@ async function loadHistory(){
 
 async function showHistory(){
   $('mainMenu').style.display='none';$('setup').style.display='none';$('histPanel').style.display='block';
+  _curRoomFilter='__all__';_curDateFilter='all';
+  // Reset filter buttons
+  document.querySelectorAll('.df-btn').forEach((b,i)=>{b.classList.toggle('active',i===0);});
   const data=await loadHistory();
   if(!data.length){
-    $('streakInfo').textContent='No games recorded yet. Play a game and save!';
+    $('statsRow').innerHTML='<div style="color:#7a6a5a;padding:12px;text-align:center;width:100%">No games recorded yet. Play a game and save! ☕</div>';
+    $('roomTabs').innerHTML='';$('roomGames').innerHTML='';
+    $('chartsArea').style.display='none';
     return;
   }
-  renderRanking(data);
-  renderMonthly(data);
-  renderStreak(data);
-  renderTable(data);
+  renderQuickStats(data);
+  renderRoomTabs(data);
+  // Show "All Games" tab by default
+  renderRoomGames(data,'__all__');
+}
+
+function toggleCharts(){
+  const ca=$('chartsArea');
+  const btn=$('chartToggle');
+  if(ca.style.display==='none'){
+    ca.style.display='block';btn.textContent='📈 Hide Charts';
+    const data=window._histData||[];
+    if(data.length){renderRanking(data);renderMonthly(data);}
+  }else{ca.style.display='none';btn.textContent='📈 Show Charts';}
+}
+
+function renderQuickStats(data){
+  window._histData=data;
+  const totalGames=data.length;
+  const winCount={};
+  data.forEach(g=>g.winner.split('&').forEach(n=>{const nm=n.trim();winCount[nm]=(winCount[nm]||0)+1;}));
+  const topBuyer=Object.entries(winCount).sort((a,b)=>b[1]-a[1])[0];
+  
+  // Current streak
+  const sorted=[...data].sort((a,b)=>(a.date+a.time)>(b.date+b.time)?-1:1);
+  const lastW=sorted[0]?.winner||'';
+  let streak=0;for(const g of sorted){if(g.winner===lastW)streak++;else break;}
+  
+  let html=`<div class="stat-box"><div class="sv">${totalGames}</div><div class="sl">Total Games</div></div>`;
+  if(topBuyer)html+=`<div class="stat-box"><div class="sv">${topBuyer[0]}</div><div class="sl">☕ ${topBuyer[1]}× bought</div></div>`;
+  html+=`<div class="stat-box"><div class="sv">${streak}×</div><div class="sl">🔥 ${lastW}</div></div>`;
+  
+  const uniqueRooms=new Set(data.map(g=>g.roomName||'Quick Game'));
+  html+=`<div class="stat-box"><div class="sv">${uniqueRooms.size}</div><div class="sl">Rooms</div></div>`;
+  
+  $('statsRow').innerHTML=html;
+}
+
+function renderRoomTabs(data){
+  const rooms={};
+  data.forEach(g=>{
+    const rn=g.roomName||'Quick Game';
+    if(!rooms[rn])rooms[rn]={games:[],lastDate:''};
+    rooms[rn].games.push(g);
+    const dt=(g.date||'')+(g.time||'');
+    if(dt>rooms[rn].lastDate)rooms[rn].lastDate=dt;
+  });
+  const sorted=Object.entries(rooms).sort((a,b)=>b[1].lastDate>a[1].lastDate?1:-1);
+  
+  let html=`<button class="room-tab active" onclick="switchRoom('__all__',this)">🎯 All<span class="tab-count">${data.length}</span></button>`;
+  sorted.forEach(([rn,info])=>{
+    const icon=rn==='Solo'||rn==='Quick Game'?'🎮':'🏠';
+    const safeRn=rn.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    html+=`<button class="room-tab" onclick="switchRoom('${safeRn}',this)">${icon} ${rn}<span class="tab-count">${info.games.length}</span></button>`;
+  });
+  $('roomTabs').innerHTML=html;
+}
+
+function switchRoom(roomFilter,el){
+  _curRoomFilter=roomFilter;
+  document.querySelectorAll('.room-tab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderRoomGames(window._histData,roomFilter);
+}
+
+function setActiveTab(el){
+  document.querySelectorAll('.room-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// State for current filters
+let _curRoomFilter='__all__',_curDateFilter='all';
+
+const DAYS_KR=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function getDayStr(dateStr){
+  try{const d=new Date(dateStr);return DAYS_KR[d.getDay()];}catch(e){return '';}
+}
+
+function setDateFilter(filter,el){
+  _curDateFilter=filter;
+  document.querySelectorAll('.df-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderRoomGames(window._histData,_curRoomFilter);
+}
+
+function filterByDate(games,filter){
+  if(filter==='all')return games;
+  const now=new Date();
+  const todayStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  if(filter==='today')return games.filter(g=>g.date===todayStr);
+  if(filter==='week'){
+    const weekAgo=new Date(now.getTime()-7*24*60*60*1000);
+    const wStr=`${weekAgo.getFullYear()}-${String(weekAgo.getMonth()+1).padStart(2,'0')}-${String(weekAgo.getDate()).padStart(2,'0')}`;
+    return games.filter(g=>g.date>=wStr);
+  }
+  if(filter==='month'){
+    const mStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    return games.filter(g=>(g.date||'').startsWith(mStr));
+  }
+  return games;
+}
+
+function renderRoomStats(filtered,roomFilter){
+  if(!filtered.length){$('roomStats').innerHTML='';return;}
+  
+  // Room-specific stats
+  const winCount={};
+  filtered.forEach(g=>g.winner.split('&').forEach(n=>{const nm=n.trim();winCount[nm]=(winCount[nm]||0)+1;}));
+  const topEntry=Object.entries(winCount).sort((a,b)=>b[1]-a[1])[0];
+  
+  // Unique players
+  const allPlayers=new Set();
+  filtered.forEach(g=>(g.players||'').split(',').forEach(n=>{const nm=n.trim();if(nm)allPlayers.add(nm);}));
+  
+  // Period label
+  const periodLabel=_curDateFilter==='today'?'Today':_curDateFilter==='week'?'This Week':_curDateFilter==='month'?'This Month':'All Time';
+  const roomLabel=roomFilter==='__all__'?'All Rooms':roomFilter;
+  
+  let html=`<div class="room-stat-row">`;
+  html+=`<span class="rs-item">📍 ${roomLabel}</span>`;
+  html+=`<span class="rs-item">📅 ${periodLabel}</span>`;
+  html+=`<span class="rs-item">🎮 <span class="rs-val">${filtered.length}</span> games</span>`;
+  html+=`<span class="rs-item">👥 <span class="rs-val">${allPlayers.size}</span> players</span>`;
+  if(topEntry)html+=`<span class="rs-item">☕ <span class="rs-val">${topEntry[0]}</span> ${topEntry[1]}×</span>`;
+  html+=`</div>`;
+  $('roomStats').innerHTML=html;
+}
+
+function renderRoomGames(data,roomFilter){
+  _curRoomFilter=roomFilter;
+  let filtered=data;
+  if(roomFilter!=='__all__'){
+    filtered=data.filter(g=>(g.roomName||'Quick Game')===roomFilter);
+  }
+  // Apply date filter
+  filtered=filterByDate(filtered,_curDateFilter);
+  // Sort by most recent
+  filtered=[...filtered].sort((a,b)=>(a.date+(a.time||''))>(b.date+(b.time||''))?-1:1);
+  
+  // Render room stats
+  renderRoomStats(filtered,roomFilter);
+  
+  if(!filtered.length){
+    $('roomGames').innerHTML='<div style="text-align:center;color:#7a6a5a;padding:20px">No games found for this filter</div>';
+    return;
+  }
+  
+  // Group by date
+  const byDate={};
+  filtered.forEach(g=>{
+    const d=g.date||'unknown';
+    if(!byDate[d])byDate[d]=[];
+    byDate[d].push(g);
+  });
+  
+  let html='';
+  Object.entries(byDate).forEach(([date,games])=>{
+    const day=getDayStr(date);
+    const shortDate=date.slice(5);// MM-DD
+    html+=`<div style="font-size:12px;color:#7a6a5a;margin:14px 0 6px;font-weight:600;display:flex;justify-content:space-between;align-items:center">
+      <span>📅 ${shortDate} (${day})</span>
+      <span style="font-weight:400">${games.length} game${games.length>1?'s':''}</span>
+    </div>`;
+    
+    games.forEach(g=>{
+      const mode=g.mode==='online'?'🌐':'🎮';
+      const host=g.hostName?`<span style="color:#7a6a5a;font-size:10px">Host: ${g.hostName}</span>`:'';
+      const gid=g.id||'';
+      
+      // Player pills
+      let playersHtml='';
+      if(g.playerDetails&&g.playerDetails.length){
+        g.playerDetails.forEach(p=>{
+          const isW=g.winner.includes(p.name);
+          playersHtml+=`<span class="gc-player${isW?' winner':''}" style="${isW?'':'border-color:'+p.color+'40;'}"><span style="color:${p.color}">${isW?'☕ ':''}${p.name}</span> <span style="color:#7a6a5a">${p.score}</span></span>`;
+        });
+      }else{
+        (g.players||'').split(',').forEach(name=>{
+          const nm=name.trim();if(!nm)return;
+          const isW=g.winner.includes(nm);
+          playersHtml+=`<span class="gc-player${isW?' winner':''}">${isW?'☕ ':''}${nm}</span>`;
+        });
+      }
+      
+      html+=`<div class="game-card">
+        <div class="gc-header">
+          <div>
+            <span class="gc-winner">☕ ${g.winner}</span>
+            ${g.tiebreaker==='yes'?'<span class="gc-tb">⚡ TB</span>':''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="text-align:right">
+              <div class="gc-date">${mode} ${g.time||''}</div>
+              ${host}
+            </div>
+            ${gid?`<button class="gc-del" onclick="deleteGame('${gid}')" title="Delete">×</button>`:''}
+          </div>
+        </div>
+        <div class="gc-players">${playersHtml}</div>
+      </div>`;
+    });
+  });
+  
+  $('roomGames').innerHTML=html;
+}
+
+async function clearHistory(){
+  if(!confirm('Clear all game history? This cannot be undone.'))return;
+  localStorage.removeItem('cpHistory');
+  try{if(db)await db.ref('games').remove();}catch(e){}
+  $('clearHistBtn').textContent='✅ Cleared';
+  setTimeout(()=>{$('clearHistBtn').textContent='🗑️ Clear';},1500);
+  showHistory();
+}
+
+function deleteGame(id){
+  if(!confirm('Delete this record?'))return;
+  let hist=JSON.parse(localStorage.getItem('cpHistory')||'[]');
+  hist=hist.filter(g=>g.id!==id);
+  localStorage.setItem('cpHistory',JSON.stringify(hist));
+  if(db){db.ref('games').orderByChild('id').equalTo(id).once('value').then(snap=>{snap.forEach(child=>child.ref.remove());});}
+  // Refresh — reload and re-render with current filters
+  loadHistory().then(data=>{
+    window._histData=data;
+    renderQuickStats(data);
+    renderRoomTabs(data);
+    renderRoomGames(data,_curRoomFilter);
+  });
 }
 
 // Chart instances
@@ -2467,50 +2751,9 @@ function renderMonthly(data){
   });
 }
 
-function renderStreak(data){
-  if(!data.length){$('streakInfo').textContent='No data yet';return;}
-  // Calculate current streak (most recent consecutive wins by same person)
-  const sorted=[...data].sort((a,b)=>a.date>b.date?-1:1);
-  const lastWinner=sorted[0].winner;
-  let streak=0;
-  for(const g of sorted){if(g.winner===lastWinner)streak++;else break;}
+function renderTable(){}// Replaced by renderRoomGames
+function renderStreak(){}// Replaced by renderQuickStats
 
-  // Find longest streak ever
-  const allSorted=[...data].sort((a,b)=>a.date>b.date?1:-1);
-  let maxStreak=0,maxName='',cs=0,cn='';
-  for(const g of allSorted){
-    if(g.winner===cn){cs++;}else{cs=1;cn=g.winner;}
-    if(cs>maxStreak){maxStreak=cs;maxName=cn;}
-  }
-
-  // Total games per player
-  const totalGames=data.length;
-  const winCount={};
-  data.forEach(g=>g.winner.split('&').forEach(n=>{const nm=n.trim();winCount[nm]=(winCount[nm]||0)+1;}));
-  const topBuyer=Object.entries(winCount).sort((a,b)=>b[1]-a[1])[0];
-
-  let html=`<div style="margin-bottom:8px">📈 Total games: <strong>${totalGames}</strong></div>`;
-  html+=`<div style="margin-bottom:8px">🔥 Current streak: <span class="streak-badge">${lastWinner} × ${streak}</span></div>`;
-  html+=`<div style="margin-bottom:8px">🏅 Longest streak ever: <span class="streak-badge">${maxName} × ${maxStreak}</span></div>`;
-  if(topBuyer){
-    const rate=Math.round(topBuyer[1]/totalGames*100);
-    html+=`<div>☕ Most coffee bought: <strong>${topBuyer[0]}</strong> (${topBuyer[1]} time${topBuyer[1]>1?'s':''}, ${rate}%)</div>`;
-  }
-  $('streakInfo').innerHTML=html;
-}
-
-function renderTable(data){
-  const recent=data.slice(0,20);
-  let html='<table class="hist-table"><thead><tr><th>Date</th><th>Time</th><th>Winner</th><th>Players</th><th>TB</th></tr></thead><tbody>';
-  recent.forEach(g=>{
-    const d=g.date||'';
-    const short=d.slice(2);// YY-MM-DD
-    const time=g.time||'';
-    html+=`<tr><td>${short}</td><td>${time}</td><td style="color:#E8927C;font-weight:700">${g.winner}</td><td>${(g.players||'').split(',').length}P</td><td>${g.tiebreaker==='yes'?'⚡':''}</td></tr>`;
-  });
-  html+='</tbody></table>';
-  $('histTable').innerHTML=html;
-}
 </script>
 </body>
 </html>

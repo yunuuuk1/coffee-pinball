@@ -91,6 +91,18 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 .df-btn{padding:4px 12px;border-radius:8px;border:1px solid #2d2319;background:transparent;color:#9a8a7a;font-size:11px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s}
 .df-btn:hover{border-color:#E8927C50}
 .df-btn.active{border-color:#E8927C;color:#E8927C;background:#E8927C10}
+/* History filter inputs */
+.hf-input{background:transparent;border:1px solid #2d2319;border-radius:8px;color:#e8d5c4;font-family:'Noto Sans KR',sans-serif;font-size:12px;padding:6px 10px;outline:none;transition:border-color .15s}
+.hf-select{background:#1e1b18;border:1px solid #2d2319;border-radius:8px;color:#c0b0a0;font-family:'Noto Sans KR',sans-serif;font-size:12px;padding:6px 10px;outline:none;transition:border-color .15s}
+.hf-input:focus,.hf-select:focus{border-color:#E8927C}
+.hf-select option{background:#1a1714;color:#c0b0a0}
+.hf-date{background:#1e1b18;border:1px solid #2d2319;border-radius:8px;color:#c0b0a0;font-family:'Noto Sans KR',sans-serif;font-size:11px;padding:5px 8px;outline:none}
+.hf-date:focus{border-color:#E8927C}
+input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.7)}
+/* Player modal */
+#playerModal,#h2hModal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(18,16,14,.92);z-index:100;overflow-y:auto;padding:20px 16px}
+#playerModal>div,#h2hModal>div{max-width:460px;margin:0 auto}
+.pm-trend-badge{display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;border-radius:6px;font-size:11px;font-weight:700}
 .room-stat-row{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:#c0b0a0;padding:8px 10px;background:#1e1b18;border-radius:10px;border:1px solid #2d2319}
 .room-stat-row .rs-item{display:flex;align-items:center;gap:4px}
 .room-stat-row .rs-val{font-weight:700;color:#E8927C}
@@ -268,7 +280,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 .dev-stat-box{text-align:center;padding:8px;background:#1e1b18;border-radius:10px;border:1px solid #2d2319}
 .dev-stat-box .sv{font-size:18px;font-weight:900;color:#E8927C}
 .dev-stat-box .sl{font-size:10px;color:#9a8a7a;margin-top:2px}
-@media(max-width:540px){#devPanel{max-width:100%;padding-left:12px;padding-right:12px}.dev-cards{grid-template-columns:1fr 1fr}.dev-stat-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:540px){#devPanel{max-width:100%;padding-left:12px;padding-right:12px}.dev-cards{grid-template-columns:1fr 1fr}.dev-stat-grid{grid-template-columns:1fr 1fr}#pmStats{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -470,6 +482,35 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
       <button class="bb2" onclick="backToMenu()" style="padding:6px 14px;font-size:12px" aria-label="Back to main menu">← Back</button>
     </div>
   </div>
+  <!-- Advanced Filters -->
+  <div class="hist-card" id="histFilters" style="margin-bottom:12px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <input type="text" id="histSearch" class="hf-input" placeholder="🔍 Search player..." oninput="applyHistFilters()" style="flex:1;min-width:120px" aria-label="Search player name">
+      <select id="histMode" class="hf-select" onchange="applyHistFilters()" aria-label="Filter by mode">
+        <option value="all">All Modes</option>
+        <option value="solo">🎮 Solo</option>
+        <option value="online">🌐 Online</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <select id="histWinner" class="hf-select" onchange="applyHistFilters()" style="flex:1;min-width:120px" aria-label="Filter by winner">
+        <option value="">All Winners</option>
+      </select>
+      <select id="histSort" class="hf-select" onchange="applyHistFilters()" aria-label="Sort games">
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+        <option value="duration">Longest Duration</option>
+        <option value="balls">Most Balls</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="date" id="histDateFrom" class="hf-date" onchange="applyHistFilters()" aria-label="From date">
+      <span style="color:#5a4a3a;font-size:11px">~</span>
+      <input type="date" id="histDateTo" class="hf-date" onchange="applyHistFilters()" aria-label="To date">
+      <button class="df-btn" onclick="clearCustomDates()" style="font-size:10px;padding:4px 8px" aria-label="Clear date range">Clear</button>
+    </div>
+    <div id="filterCount" style="margin-top:6px;font-size:11px;color:#9a8a7a;text-align:right"></div>
+  </div>
   <!-- Quick Stats -->
   <div class="hist-card" id="quickStats" style="margin-bottom:12px">
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:#c0b0a0" id="statsRow"></div>
@@ -493,9 +534,40 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
     <div id="chartsArea" style="display:none;margin-top:10px">
       <div class="hist-card"><h3>🏆 Most Coffee Bought</h3><canvas id="rankChart" height="200"></canvas></div>
       <div class="hist-card"><h3>📅 Monthly Stats (<span id="monthYear"></span>)</h3><canvas id="monthChart" height="180"></canvas></div>
+      <div class="hist-card"><h3>🎯 Game Mode</h3><canvas id="modeChart" height="200"></canvas></div>
+      <div class="hist-card"><h3>🔥 Longest Win Streaks</h3><div id="streakList"></div></div>
+      <div class="hist-card"><h3>📆 Game Activity by Day</h3><div id="heatmapArea"></div></div>
+      <div class="hist-card"><h3>⚔️ Head-to-Head</h3><button class="bb2" onclick="showH2H()" style="width:100%;padding:8px;font-size:12px" aria-label="Compare two players">Compare Two Players</button></div>
     </div>
   </div>
 </div>
+
+<!-- Player Profile Modal -->
+<div id="playerModal"><div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h2 id="pmName" style="font-size:20px;font-weight:900;color:#E8927C"></h2>
+    <button class="bb2" onclick="closePlayerModal()" style="padding:6px 14px;font-size:12px" aria-label="Close profile">Close</button>
+  </div>
+  <div id="pmStats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"></div>
+  <div class="hist-card" id="pmTrend" style="margin-bottom:12px"></div>
+  <div class="hist-card" id="pmOpponents" style="margin-bottom:12px"></div>
+  <div class="hist-card"><h3>📈 Win Rate Over Time</h3><canvas id="pmWinRateChart" height="180"></canvas></div>
+</div></div>
+
+<!-- Head-to-Head Modal -->
+<div id="h2hModal"><div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h2 style="font-size:18px;font-weight:900;color:#E8927C">⚔️ Head-to-Head</h2>
+    <button class="bb2" onclick="$('h2hModal').style.display='none'" style="padding:6px 14px;font-size:12px" aria-label="Close comparison">Close</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <select id="h2hP1" class="hf-select" style="flex:1" aria-label="Player 1"></select>
+    <span style="color:#E8927C;font-weight:900;align-self:center">VS</span>
+    <select id="h2hP2" class="hf-select" style="flex:1" aria-label="Player 2"></select>
+  </div>
+  <button class="bb2" onclick="renderH2H()" style="width:100%;padding:10px;margin-bottom:12px;border-color:#E8927C;color:#E8927C" aria-label="Compare">⚔️ Compare</button>
+  <div id="h2hResult"></div>
+</div></div>
 
 <!-- Developer Dashboard -->
 <div id="devPanel">
@@ -2940,15 +3012,23 @@ async function loadHistory(){
 async function showHistory(){
   showScreen('histPanel');
   _curRoomFilter='__all__';_curDateFilter='all';
-  // Reset filter buttons
+  _curSearchText='';_curModeFilter='all';_curWinnerFilter='';_curSort='newest';
+  // Reset filter controls
   document.querySelectorAll('.df-btn').forEach((b,i)=>{b.classList.toggle('active',i===0);});
+  if($('histSearch'))$('histSearch').value='';
+  if($('histMode'))$('histMode').value='all';
+  if($('histSort'))$('histSort').value='newest';
+  if($('histDateFrom'))$('histDateFrom').value='';
+  if($('histDateTo'))$('histDateTo').value='';
   const data=await loadHistory();
   if(!data.length){
     $('statsRow').innerHTML='<div style="color:#9a8a7a;padding:12px;text-align:center;width:100%">No games recorded yet. Play a game and save! ☕</div>';
     $('roomTabs').innerHTML='';$('roomGames').innerHTML='';
     $('chartsArea').style.display='none';
+    if($('filterCount'))$('filterCount').textContent='';
     return;
   }
+  populateWinnerDropdown(data);
   renderQuickStats(data);
   renderRoomTabs(data);
   // Show "All Games" tab by default
@@ -2961,7 +3041,7 @@ function toggleCharts(){
   if(ca.style.display==='none'){
     ca.style.display='block';btn.textContent='📈 Hide Charts';
     const data=window._histData||[];
-    if(data.length){renderRanking(data);renderMonthly(data);}
+    if(data.length){renderRanking(data);renderMonthly(data);renderModeChart(data);renderStreakRecords(data);renderHeatmap(data);}
   }else{ca.style.display='none';btn.textContent='📈 Show Charts';}
 }
 
@@ -2978,7 +3058,7 @@ function renderQuickStats(data){
   let streak=0;for(const g of sorted){if(g.winner===lastW)streak++;else break;}
   
   let html=`<div class="stat-box"><div class="sv">${totalGames}</div><div class="sl">Total Games</div></div>`;
-  if(topBuyer)html+=`<div class="stat-box"><div class="sv">${topBuyer[0]}</div><div class="sl">☕ ${topBuyer[1]}× bought</div></div>`;
+  if(topBuyer)html+=`<div class="stat-box" style="cursor:pointer" onclick="showPlayerModal('${topBuyer[0].replace(/'/g,"\\'")}')"><div class="sv">${topBuyer[0]}</div><div class="sl">☕ ${topBuyer[1]}× bought</div></div>`;
   html+=`<div class="stat-box"><div class="sv">${streak}×</div><div class="sl">🔥 ${lastW}</div></div>`;
   
   const uniqueRooms=new Set(data.map(g=>g.roomName||'Quick Game'));
@@ -3021,6 +3101,8 @@ function setActiveTab(el){
 
 // State for current filters
 let _curRoomFilter='__all__',_curDateFilter='all';
+let _curSearchText='',_curModeFilter='all',_curWinnerFilter='',_curSort='newest';
+let _searchDebounce=null;
 
 const DAYS_KR=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function getDayStr(dateStr){
@@ -3029,6 +3111,8 @@ function getDayStr(dateStr){
 
 function setDateFilter(filter,el){
   _curDateFilter=filter;
+  if($('histDateFrom'))$('histDateFrom').value='';
+  if($('histDateTo'))$('histDateTo').value='';
   document.querySelectorAll('.df-btn').forEach(b=>b.classList.remove('active'));
   if(el)el.classList.add('active');
   renderRoomGames(window._histData,_curRoomFilter);
@@ -3049,6 +3133,31 @@ function filterByDate(games,filter){
     return games.filter(g=>(g.date||'').startsWith(mStr));
   }
   return games;
+}
+
+function applyHistFilters(){
+  clearTimeout(_searchDebounce);
+  _searchDebounce=setTimeout(()=>{
+    _curSearchText=($('histSearch').value||'').trim().toLowerCase();
+    _curModeFilter=$('histMode').value;
+    _curWinnerFilter=$('histWinner').value;
+    _curSort=$('histSort').value;
+    renderRoomGames(window._histData,_curRoomFilter);
+  },150);
+}
+
+function clearCustomDates(){
+  $('histDateFrom').value='';$('histDateTo').value='';
+  applyHistFilters();
+}
+
+function populateWinnerDropdown(data){
+  const winners=new Set();
+  data.forEach(g=>{if(g.winner)(g.winner+'').split('&').forEach(n=>{const nm=n.trim();if(nm)winners.add(nm);});});
+  const sorted=[...winners].sort();
+  let html='<option value="">All Winners</option>';
+  sorted.forEach(w=>{html+=`<option value="${w}">${w}</option>`;});
+  $('histWinner').innerHTML=html;
 }
 
 function renderRoomStats(filtered,roomFilter){
@@ -3085,8 +3194,23 @@ function renderRoomGames(data,roomFilter){
   }
   // Apply date filter
   filtered=filterByDate(filtered,_curDateFilter);
-  // Sort by most recent
-  filtered=[...filtered].sort((a,b)=>(a.date+(a.time||''))>(b.date+(b.time||''))?-1:1);
+  // Custom date range
+  const dFrom=$('histDateFrom')?$('histDateFrom').value:'',dTo=$('histDateTo')?$('histDateTo').value:'';
+  if(dFrom)filtered=filtered.filter(g=>g.date>=dFrom);
+  if(dTo)filtered=filtered.filter(g=>g.date<=dTo);
+  // Mode filter
+  if(_curModeFilter!=='all')filtered=filtered.filter(g=>g.mode===_curModeFilter);
+  // Player search
+  if(_curSearchText)filtered=filtered.filter(g=>(g.players||'').toLowerCase().includes(_curSearchText)||(g.winner||'').toLowerCase().includes(_curSearchText));
+  // Winner filter
+  if(_curWinnerFilter)filtered=filtered.filter(g=>(g.winner+'').split('&').map(n=>n.trim()).includes(_curWinnerFilter));
+  // Sort
+  switch(_curSort){
+    case 'oldest':filtered=[...filtered].sort((a,b)=>(a.date+(a.time||''))>(b.date+(b.time||''))?1:-1);break;
+    case 'duration':filtered=[...filtered].sort((a,b)=>(b.gameDuration||0)-(a.gameDuration||0));break;
+    case 'balls':filtered=[...filtered].sort((a,b)=>(b.totalBalls||0)-(a.totalBalls||0));break;
+    default:filtered=[...filtered].sort((a,b)=>(a.date+(a.time||''))>(b.date+(b.time||''))?-1:1);
+  }
   
   // Render room stats
   renderRoomStats(filtered,roomFilter);
@@ -3123,13 +3247,13 @@ function renderRoomGames(data,roomFilter){
       if(g.playerDetails&&g.playerDetails.length){
         g.playerDetails.forEach(p=>{
           const isW=g.winner.includes(p.name);
-          playersHtml+=`<span class="gc-player${isW?' winner':''}" style="${isW?'':'border-color:'+p.color+'40;'}"><span style="color:${p.color}">${isW?'☕ ':''}${p.name}</span> <span style="color:#9a8a7a">${p.score}</span></span>`;
+          playersHtml+=`<span class="gc-player${isW?' winner':''}" style="cursor:pointer;${isW?'':'border-color:'+p.color+'40;'}" onclick="showPlayerModal('${p.name.replace(/'/g,"\\'")}')"><span style="color:${p.color}">${isW?'☕ ':''}${p.name}</span> <span style="color:#9a8a7a">${p.score}</span></span>`;
         });
       }else{
         (g.players||'').split(',').forEach(name=>{
           const nm=name.trim();if(!nm)return;
           const isW=g.winner.includes(nm);
-          playersHtml+=`<span class="gc-player${isW?' winner':''}">${isW?'☕ ':''}${nm}</span>`;
+          playersHtml+=`<span class="gc-player${isW?' winner':''}" style="cursor:pointer" onclick="showPlayerModal('${nm.replace(/'/g,"\\'")}')">${isW?'☕ ':''}${nm}</span>`;
         });
       }
       
@@ -3154,6 +3278,9 @@ function renderRoomGames(data,roomFilter){
   });
   
   $('roomGames').innerHTML=html;
+  // Filter count
+  const fc=$('filterCount');
+  if(fc)fc.textContent=`Showing ${filtered.length} of ${data.length} games`;
 }
 
 async function clearHistory(){
@@ -3184,25 +3311,31 @@ function deleteGame(id){
 let rankChartInst=null,monthChartInst=null;
 
 function renderRanking(data){
-  const wins={};
+  const wins={},played={};
   data.forEach(g=>{
-    const w=g.winner.split('&');
-    w.forEach(n=>{const nm=n.trim();wins[nm]=(wins[nm]||0)+1;});
+    const ps=(g.players||'').split(',').map(n=>n.trim());
+    ps.forEach(p=>{if(p)played[p]=(played[p]||0)+1;});
+    (g.winner+'').split('&').forEach(n=>{const nm=n.trim();wins[nm]=(wins[nm]||0)+1;});
   });
-  const sorted=Object.entries(wins).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const sorted=Object.entries(wins).sort((a,b)=>b[1]-a[1]).slice(0,15);
   const labels=sorted.map(s=>s[0]);
-  const values=sorted.map(s=>s[1]);
+  const winVals=sorted.map(s=>s[1]);
+  const playVals=sorted.map(s=>played[s[0]]||0);
   const colors=sorted.map((_,i)=>[
     '#E8927C','#FFD700','#22c55e','#3b82f6','#a855f7',
-    '#ec4899','#f97316','#14b8a6','#6366f1','#ef4444'
-  ][i%10]);
+    '#ec4899','#f97316','#14b8a6','#6366f1','#ef4444',
+    '#E8927C','#FFD700','#22c55e','#3b82f6','#a855f7'
+  ][i%15]);
 
   if(rankChartInst)rankChartInst.destroy();
   rankChartInst=new Chart($('rankChart'),{
     type:'bar',
-    data:{labels,datasets:[{label:'Times bought coffee ☕',data:values,backgroundColor:colors,borderRadius:6}]},
-    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:'#9a8a7a',stepSize:1},grid:{color:'#2d2319'}},
+    data:{labels,datasets:[
+      {label:'Games Played',data:playVals,backgroundColor:colors.map(c=>c+'30'),borderColor:colors.map(c=>c+'60'),borderWidth:1,borderRadius:6},
+      {label:'Times Bought ☕',data:winVals,backgroundColor:colors,borderRadius:6}
+    ]},
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{labels:{color:'#9a8a7a',font:{family:'Noto Sans KR',size:10}}}},
+      scales:{x:{stacked:false,ticks:{color:'#9a8a7a',stepSize:1},grid:{color:'#2d2319'}},
         y:{ticks:{color:'#c0b0a0',font:{family:'Noto Sans KR'}},grid:{display:false}}}}
   });
 }
@@ -3248,6 +3381,202 @@ function renderMonthly(data){
 
 function renderTable(){}// Replaced by renderRoomGames
 function renderStreak(){}// Replaced by renderQuickStats
+
+// ═══ PLAYER PROFILE MODAL ═══
+let _pmChartInst=null;
+
+function showPlayerModal(name){
+  const data=window._histData||[];
+  const pGames=data.filter(g=>(g.players||'').split(',').map(n=>n.trim()).includes(name));
+  if(!pGames.length)return;
+  const wins=pGames.filter(g=>(g.winner+'').split('&').map(n=>n.trim()).includes(name)).length;
+  const winRate=Math.round(wins/pGames.length*100);
+  const scores=[];
+  pGames.forEach(g=>{
+    if(g.playerDetails){const pd=g.playerDetails.find(p=>p.name===name);if(pd&&pd.score!=null)scores.push(pd.score);}
+  });
+  const avgScore=scores.length?(Math.round(scores.reduce((a,b)=>a+b,0)/scores.length*10)/10):'-';
+  // Longest streak
+  const sorted=[...pGames].sort((a,b)=>(a.date+(a.time||''))>(b.date+(b.time||''))?1:-1);
+  let maxStreak=0,curStreak=0;
+  sorted.forEach(g=>{
+    if((g.winner+'').split('&').map(n=>n.trim()).includes(name)){curStreak++;if(curStreak>maxStreak)maxStreak=curStreak;}
+    else curStreak=0;
+  });
+  const onlineC=pGames.filter(g=>g.mode==='online').length;
+  const soloC=pGames.filter(g=>g.mode==='solo').length;
+  $('pmName').textContent=name;
+  $('pmStats').innerHTML=`
+    <div class="stat-box"><div class="sv">${pGames.length}</div><div class="sl">Games</div></div>
+    <div class="stat-box"><div class="sv">${wins}</div><div class="sl">Wins</div></div>
+    <div class="stat-box"><div class="sv" style="color:${winRate>=50?'#22c55e':'#ef4444'}">${winRate}%</div><div class="sl">Win Rate</div></div>
+    <div class="stat-box"><div class="sv">${avgScore}</div><div class="sl">Avg Score</div></div>
+    <div class="stat-box"><div class="sv">${maxStreak}</div><div class="sl">Best Streak</div></div>
+    <div class="stat-box"><div class="sv">${onlineC}/${soloC}</div><div class="sl">Online/Solo</div></div>`;
+  // Recent form (last 10)
+  const recent=[...sorted].reverse().slice(0,10);
+  let trendHtml='<h3>Recent Form</h3><div style="display:flex;gap:4px;flex-wrap:wrap">';
+  recent.forEach(g=>{
+    const won=(g.winner+'').split('&').map(n=>n.trim()).includes(name);
+    trendHtml+=`<span class="pm-trend-badge" style="background:${won?'#22c55e20':'#ef444420'};color:${won?'#22c55e':'#ef4444'};border:1px solid ${won?'#22c55e40':'#ef444440'}">${won?'W':'L'}</span>`;
+  });
+  trendHtml+='</div>';$('pmTrend').innerHTML=trendHtml;
+  // Frequent opponents
+  const oppCount={};
+  pGames.forEach(g=>{(g.players||'').split(',').forEach(n=>{const nm=n.trim();if(nm&&nm!==name)oppCount[nm]=(oppCount[nm]||0)+1;});});
+  const topOpps=Object.entries(oppCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  let oppHtml='<h3>Frequent Opponents</h3>';
+  if(topOpps.length){
+    oppHtml+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    topOpps.forEach(([opp,cnt])=>{oppHtml+=`<span style="cursor:pointer;padding:4px 10px;background:#1e1b18;border:1px solid #2d2319;border-radius:8px;font-size:12px;color:#c0b0a0" onclick="showPlayerModal('${opp.replace(/'/g,"\\'")}')">${opp} <span style="color:#E8927C">${cnt}x</span></span>`;});
+    oppHtml+='</div>';
+  }else oppHtml+='<div style="color:#5a4a3a;font-size:12px">No opponents found</div>';
+  $('pmOpponents').innerHTML=oppHtml;
+  // Win rate chart
+  renderPlayerWinRateChart(name,sorted);
+  $('playerModal').style.display='block';
+}
+
+function closePlayerModal(){
+  $('playerModal').style.display='none';
+  if(_pmChartInst){_pmChartInst.destroy();_pmChartInst=null;}
+}
+
+function renderPlayerWinRateChart(name,sortedGames){
+  if(_pmChartInst){_pmChartInst.destroy();_pmChartInst=null;}
+  if(!window.Chart||!sortedGames.length)return;
+  const monthMap={};
+  sortedGames.forEach(g=>{
+    const m=(g.date||'').substring(0,7);
+    if(!monthMap[m])monthMap[m]={played:0,won:0};
+    monthMap[m].played++;
+    if((g.winner+'').split('&').map(n=>n.trim()).includes(name))monthMap[m].won++;
+  });
+  let totalP=0,totalW=0;const labels=[],rates=[];
+  Object.entries(monthMap).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([m,v])=>{
+    totalP+=v.played;totalW+=v.won;
+    labels.push(m.substring(5));
+    rates.push(Math.round(totalW/totalP*100));
+  });
+  _pmChartInst=new Chart($('pmWinRateChart'),{
+    type:'line',
+    data:{labels,datasets:[{label:'Win Rate %',data:rates,borderColor:'#E8927C',backgroundColor:'#E8927C33',fill:true,tension:.3,pointRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#9a8a7a'},grid:{color:'#2d2319'}},
+        y:{min:0,max:100,ticks:{color:'#9a8a7a',callback:v=>v+'%'},grid:{color:'#2d2319'}}}}
+  });
+}
+
+// ═══ HEAD-TO-HEAD ═══
+function showH2H(){
+  const data=window._histData||[];
+  const allP=new Set();
+  data.forEach(g=>(g.players||'').split(',').forEach(n=>{const nm=n.trim();if(nm)allP.add(nm);}));
+  const sorted=[...allP].sort();
+  const opts=sorted.map(p=>`<option value="${p}">${p}</option>`).join('');
+  $('h2hP1').innerHTML=opts;$('h2hP2').innerHTML=opts;
+  if(sorted.length>1)$('h2hP2').selectedIndex=1;
+  $('h2hModal').style.display='block';$('h2hResult').innerHTML='';
+}
+
+function renderH2H(){
+  const p1=$('h2hP1').value,p2=$('h2hP2').value;
+  if(!p1||!p2||p1===p2){$('h2hResult').innerHTML='<div style="color:#9a8a7a;text-align:center">Select two different players</div>';return;}
+  const data=window._histData||[];
+  const shared=data.filter(g=>{const ps=(g.players||'').split(',').map(n=>n.trim());return ps.includes(p1)&&ps.includes(p2);});
+  if(!shared.length){$('h2hResult').innerHTML='<div style="color:#9a8a7a;text-align:center">No shared games found</div>';return;}
+  let p1W=0,p2W=0,ties=0;
+  shared.forEach(g=>{const ws=(g.winner+'').split('&').map(n=>n.trim());const w1=ws.includes(p1),w2=ws.includes(p2);if(w1&&w2)ties++;else if(w1)p1W++;else if(w2)p2W++;});
+  const total=shared.length;
+  const p1Pct=Math.round(p1W/total*100),p2Pct=Math.round(p2W/total*100);
+  let html=`<div style="text-align:center;margin-bottom:12px">
+    <div style="font-size:11px;color:#9a8a7a;margin-bottom:6px">${total} shared games</div>
+    <div style="display:flex;align-items:center;gap:16px;justify-content:center">
+      <div style="text-align:center"><div style="font-size:28px;font-weight:900;color:#E8927C">${p1W}</div><div style="font-size:12px;color:#c0b0a0">${p1}</div></div>
+      <div style="font-size:14px;color:#5a4a3a">—</div>
+      <div style="text-align:center"><div style="font-size:28px;font-weight:900;color:#7CB5E8">${p2W}</div><div style="font-size:12px;color:#c0b0a0">${p2}</div></div>
+    </div>
+    ${ties?`<div style="font-size:11px;color:#9a8a7a;margin-top:4px">${ties} tie(s)</div>`:''}
+  </div>
+  <div style="height:20px;border-radius:10px;overflow:hidden;display:flex;margin-bottom:12px">
+    <div style="width:${p1Pct}%;background:#E8927C;transition:width .3s"></div>
+    <div style="flex:1;background:#2d2319"></div>
+    <div style="width:${p2Pct}%;background:#7CB5E8;transition:width .3s"></div>
+  </div>`;
+  html+='<div style="font-size:12px;color:#9a8a7a;margin-bottom:6px">Recent Matches</div>';
+  [...shared].sort((a,b)=>(a.date+(a.time||''))>(b.date+(b.time||''))?-1:1).slice(0,5).forEach(g=>{
+    const ws=(g.winner+'').split('&').map(n=>n.trim());
+    const wStr=ws.includes(p1)?p1:ws.includes(p2)?p2:'Tie';
+    const wClr=wStr===p1?'#E8927C':wStr===p2?'#7CB5E8':'#9a8a7a';
+    html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1e1b18;font-size:11px">
+      <span style="color:#9a8a7a">${(g.date||'').slice(5)} ${g.time||''}</span>
+      <span style="color:${wClr};font-weight:700">${wStr}</span></div>`;
+  });
+  $('h2hResult').innerHTML=html;
+}
+
+// ═══ ENHANCED CHARTS ═══
+let _modeChartInst=null;
+
+function renderStreakRecords(data){
+  const sorted=[...data].sort((a,b)=>(a.date+(a.time||''))>(b.date+(b.time||''))?1:-1);
+  const allP=new Set();
+  data.forEach(g=>(g.players||'').split(',').forEach(n=>{const nm=n.trim();if(nm)allP.add(nm);}));
+  const ps={};allP.forEach(p=>{ps[p]={cur:0,max:0};});
+  sorted.forEach(g=>{
+    const winners=(g.winner+'').split('&').map(n=>n.trim());
+    const parts=(g.players||'').split(',').map(n=>n.trim());
+    parts.forEach(p=>{
+      if(!ps[p])ps[p]={cur:0,max:0};
+      if(winners.includes(p)){ps[p].cur++;if(ps[p].cur>ps[p].max)ps[p].max=ps[p].cur;}
+      else ps[p].cur=0;
+    });
+  });
+  const top=Object.entries(ps).map(([name,s])=>({name,max:s.max,cur:s.cur})).filter(s=>s.max>0).sort((a,b)=>b.max-a.max).slice(0,8);
+  let html='';
+  top.forEach((s,i)=>{
+    const active=s.cur===s.max&&s.cur>0;
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1e1b18;font-size:12px">
+      <span style="color:#9a8a7a;width:20px">#${i+1}</span>
+      <span style="flex:1;color:#c0b0a0;cursor:pointer" onclick="showPlayerModal('${s.name.replace(/'/g,"\\'")}')">${s.name}</span>
+      <span class="streak-badge">${s.max}🔥${active?' active':''}</span></div>`;
+  });
+  if(!html)html='<div style="color:#5a4a3a;font-size:12px;text-align:center">No streaks yet</div>';
+  $('streakList').innerHTML=html;
+}
+
+function renderHeatmap(data){
+  const dayCount=[0,0,0,0,0,0,0];
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  data.forEach(g=>{try{const d=new Date(g.date);if(!isNaN(d.getTime()))dayCount[d.getDay()]++;}catch(e){}});
+  const maxC=Math.max(...dayCount,1);
+  let html='<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">';
+  dayCount.forEach((cnt,i)=>{
+    const int=cnt/maxC;
+    const bg=cnt===0?'#1e1b18':`rgba(232,146,124,${(.15+int*.85).toFixed(2)})`;
+    const tc=int>0.5?'#1a1410':'#c0b0a0';
+    html+=`<div style="text-align:center;min-width:48px">
+      <div style="width:48px;height:48px;border-radius:8px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${tc};border:1px solid #2d2319">${cnt}</div>
+      <div style="font-size:10px;color:#9a8a7a;margin-top:4px">${dayNames[i]}</div></div>`;
+  });
+  html+='</div>';
+  $('heatmapArea').innerHTML=html;
+}
+
+function renderModeChart(data){
+  if(_modeChartInst){_modeChartInst.destroy();_modeChartInst=null;}
+  if(!window.Chart)return;
+  const solo=data.filter(g=>g.mode==='solo').length;
+  const online=data.filter(g=>g.mode==='online').length;
+  const unknown=data.length-solo-online;
+  const labels=['Solo','Online'];const values=[solo,online];
+  if(unknown>0){labels.push('Other');values.push(unknown);}
+  _modeChartInst=new Chart($('modeChart'),{
+    type:'doughnut',
+    data:{labels,datasets:[{data:values,backgroundColor:['#E8927C','#22c55e','#9a8a7a'],borderWidth:0}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#c0b0a0',font:{family:'Noto Sans KR'}}}}}
+  });
+}
 
 // ═══ DEVELOPER DASHBOARD ═══
 let _devRoomsListener=null;
@@ -3435,6 +3764,8 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     // ESC → navigate back depending on which screen is visible
     if($('cupPreview').style.display==='flex'){cancelPreview();return;}
+    if($('playerModal').style.display==='block'){closePlayerModal();return;}
+    if($('h2hModal').style.display==='block'){$('h2hModal').style.display='none';return;}
     if($('devPanel').style.display!=='none'){hideDevPanel();return;}
     if($('game').style.display!=='none'&&(isEnded||!balls.some(b=>b.a))){back();return;}
     if($('histPanel').style.display!=='none'){backToMenu();return;}

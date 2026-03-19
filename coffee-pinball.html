@@ -116,6 +116,15 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 .cdn.sh{opacity:1;transform:scale(1)}
 .cdg{font-family:'Noto Sans KR',sans-serif;font-size:42px;font-weight:900;color:#E8927C;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);transform:scale(2)}
 .cdg.sh{opacity:1;transform:scale(1)}
+/* Cup Preview */
+#cupPreview{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(18,16,14,.95);z-index:19;border-radius:12px;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.cp-title{font-size:20px;font-weight:900;color:#e8d5c4;letter-spacing:2px}
+#cpCanvas{border-radius:8px;max-width:90%}
+.cp-btns{display:flex;gap:12px}
+.cp-shuffle{background:transparent;border:2px solid #E8927C;color:#E8927C;font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:700;padding:10px 24px;border-radius:50px;cursor:pointer;transition:all .3s}
+.cp-shuffle:hover{background:#E8927C;color:#1a1410}
+.cp-start{background:linear-gradient(135deg,#E8927C,#d4755e);color:#1a1410;border:none;font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:700;padding:10px 28px;border-radius:50px;cursor:pointer;transition:all .3s}
+.cp-start:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(232,146,124,.4)}
 /* Cheer buttons */
 #cheer{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:4;pointer-events:auto}
 .cbtn{background:rgba(30,27,24,.7);border:1px solid #3d3229;border-radius:14px;padding:3px 10px;font-size:10px;cursor:pointer;transition:all .2s;font-family:'Noto Sans KR',sans-serif;-webkit-tap-highlight-color:transparent}
@@ -381,6 +390,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
     <canvas id="cv" role="img" aria-label="Pinball game in progress"></canvas>
     <div id="so"></div><div id="st2">FINAL ROUND</div>
     <div id="et"></div>
+    <div id="cupPreview"><div class="cp-title">☕ Cup Order</div><canvas id="cpCanvas"></canvas><div class="cp-btns"><button class="cp-shuffle" onclick="shuffleCups()" aria-label="Shuffle cup order">🔀 Shuffle</button><button class="cp-start" onclick="confirmCups()" aria-label="Start game">▶ Start!</button></div></div>
     <div id="cd"><div class="cds" id="cdS"></div><div class="cdn" id="cdN"></div><div class="cdg" id="cdG">DROP!</div></div>
     <div id="cheer" style="display:none"></div>
   </div>
@@ -923,7 +933,8 @@ function startRound(){
   isSlowmo=false;isEnded=false;currentGravity=GRAVITY_NORMAL;settleCount=0;particles=[];timeline=[];prevLeader=-1;isFinalBomb=false;finalBombFrame=0;finalBombSpawned=false;preMegaLeader=-1;resultPhase=0;confetti=[];dramaFrame=0;
   if(currentRound===1)gameStats={goldCount:0,bombCount:0,megaGoldCount:0,megaBombCount:0,startTime:Date.now()};
   initB();buildRanking();buildCheer();
-  countdown(()=>{startRec();startBGM();animate();startDropTimer();});
+  if(currentRound===1){showCupPreview();}
+  else{shuffleCupOrder();rebuildCups();buildRanking();countdown(()=>{startRec();startBGM();animate();startDropTimer();});}
 }
 
 // ═══ TIEBREAKER ═══
@@ -1026,7 +1037,103 @@ function shuffleCupOrder(){
   for(let i=0;i<n;i++){players[i]=newPl[i];cumScores[i]=newCum[i];}
 }
 
-function initB(){shuffleColors();shuffleCupOrder();winner=null;balls=[];dropCount=0;clearInterval(dropTimer);cancelAnimationFrame(animFrameId);splashLines=[];splashDamage=players.map(()=>[]);
+// ═══ CUP PREVIEW & SHUFFLE ═══
+function rebuildCups(){
+  cups=[];cupShakes=[];const n=players.length,cupAreaL=10,cupAreaR=CANVAS_W-10,cw=(cupAreaR-cupAreaL)/n;
+  for(let i=0;i<n;i++){cups.push({x:cupAreaL+i*cw,y:CANVAS_H-CUP_HEIGHT-NAME_HEIGHT,w:cw,h:CUP_HEIGHT,fl:0,cl:COLORS[i%COLORS.length],nm:players[i].trim(),pf:0});cupShakes.push(null);}
+}
+function drawCupPreview(){
+  const cv=$('cpCanvas'),n=players.length;
+  const pw=Math.min(460,CANVAS_W),ph=140;
+  cv.width=pw;cv.height=ph;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,pw,ph);
+  // Draw mini cups
+  const margin=20,cupW=(pw-margin*2)/n,cupH=70,cupY=20,ins=6;
+  for(let i=0;i<n;i++){
+    const cx=margin+i*cupW,cl=cups[i]?cups[i].cl:COLORS[i%COLORS.length],nm=cups[i]?cups[i].nm:players[i].trim();
+    // Trapezoid cup
+    ctx.beginPath();ctx.moveTo(cx,cupY);ctx.lineTo(cx+cupW,cupY);ctx.lineTo(cx+cupW-ins,cupY+cupH);ctx.lineTo(cx+ins,cupY+cupH);ctx.closePath();
+    ctx.fillStyle='#1e1b18';ctx.fill();ctx.strokeStyle=cl;ctx.lineWidth=2.5;ctx.stroke();
+    // Separator
+    if(i<n-1){ctx.beginPath();ctx.moveTo(cx+cupW,cupY);ctx.lineTo(cx+cupW,cupY+cupH);ctx.strokeStyle='#3d3229';ctx.lineWidth=1;ctx.stroke();}
+    // Name
+    let fs=cupW<50?13:cupW<70?16:20;
+    ctx.fillStyle='#e8d5c4';ctx.font=`bold ${fs}px "Noto Sans KR",sans-serif`;ctx.textAlign='center';
+    let dn=nm;if(ctx.measureText(dn).width>cupW-10)dn=dn.substring(0,3)+'…';
+    ctx.fillText(dn,cx+cupW/2,cupY+cupH/2+fs/3);
+    // Position number
+    ctx.fillStyle='#9a8a7a';ctx.font='11px "Noto Sans KR",sans-serif';
+    ctx.fillText(`#${i+1}`,cx+cupW/2,cupY+cupH+18);
+  }
+}
+let shuffleAnimId=null;
+function shuffleCups(){
+  if(shuffleAnimId)return;// prevent double click
+  const cv=$('cpCanvas'),ctx=cv.getContext('2d');
+  const n=players.length,pw=cv.width,ph=cv.height;
+  const margin=20,cupW=(pw-margin*2)/n,cupH=70,cupY=20,ins=6;
+  // Save old positions/names
+  const oldCups=cups.map(c=>({nm:c.nm,cl:c.cl}));
+  // Shuffle
+  shuffleCupOrder();rebuildCups();
+  const newCups=cups.map(c=>({nm:c.nm,cl:c.cl}));
+  // Animate
+  const duration=700,start=performance.now();
+  function animFrame(now){
+    const t=Math.min((now-start)/duration,1);
+    ctx.clearRect(0,0,pw,ph);
+    for(let i=0;i<n;i++){
+      const cx=margin+i*cupW;
+      let nm,cl,ox=0,alpha=1;
+      if(t<0.3){
+        // Phase 1: shrink to center
+        const p=t/0.3;
+        const ease=p*p;
+        nm=oldCups[i].nm;cl=oldCups[i].cl;
+        ox=(pw/2-(cx+cupW/2))*ease*0.6;
+        alpha=1-ease*0.4;
+      }else if(t<0.6){
+        // Phase 2: jitter at center
+        const p=(t-0.3)/0.3;
+        nm='?';cl='#E8927C';
+        ox=(pw/2-(cx+cupW/2))*0.6+(Math.random()-.5)*12;
+        alpha=0.6+Math.random()*0.2;
+      }else{
+        // Phase 3: expand to new positions
+        const p=(t-0.6)/0.4;
+        const ease=1-Math.pow(1-p,3);// ease-out
+        nm=newCups[i].nm;cl=newCups[i].cl;
+        ox=(pw/2-(cx+cupW/2))*0.6*(1-ease);
+        alpha=0.6+ease*0.4;
+      }
+      ctx.save();ctx.globalAlpha=alpha;
+      const dx=cx+ox;
+      ctx.beginPath();ctx.moveTo(dx,cupY);ctx.lineTo(dx+cupW,cupY);ctx.lineTo(dx+cupW-ins,cupY+cupH);ctx.lineTo(dx+ins,cupY+cupH);ctx.closePath();
+      ctx.fillStyle='#1e1b18';ctx.fill();ctx.strokeStyle=cl;ctx.lineWidth=2.5;ctx.stroke();
+      let fs=cupW<50?13:cupW<70?16:20;
+      ctx.fillStyle='#e8d5c4';ctx.font=`bold ${fs}px "Noto Sans KR",sans-serif`;ctx.textAlign='center';
+      let dn=nm;if(nm!=='?'&&ctx.measureText(dn).width>cupW-10)dn=dn.substring(0,3)+'…';
+      ctx.fillText(dn,dx+cupW/2,cupY+cupH/2+fs/3);
+      ctx.restore();
+    }
+    if(t<1){shuffleAnimId=requestAnimationFrame(animFrame);}
+    else{shuffleAnimId=null;drawCupPreview();playTone(600,.08,'sine',.04);}
+  }
+  playTone(300,.1,'sine',.05);
+  shuffleAnimId=requestAnimationFrame(animFrame);
+}
+function showCupPreview(){
+  $('cupPreview').style.display='flex';
+  drawCupPreview();
+}
+function confirmCups(){
+  $('cupPreview').style.display='none';
+  if(shuffleAnimId){cancelAnimationFrame(shuffleAnimId);shuffleAnimId=null;}
+  countdown(()=>{startRec();startBGM();animate();startDropTimer();});
+}
+
+function initB(){shuffleColors();winner=null;balls=[];dropCount=0;clearInterval(dropTimer);cancelAnimationFrame(animFrameId);splashLines=[];splashDamage=players.map(()=>[]);
 const cv=$('cv');cv.width=CANVAS_W;cv.height=CANVAS_H;
 cv.style.width='';cv.style.minWidth='';
 // Obstacles
@@ -1375,6 +1482,7 @@ if(origPlayers){players=origPlayers;}isTiebreaker=false;origPlayers=null;origCum
 dropsPerPlayer=+$('nS').value;maxBalls=dropsPerPlayer*players.length;const cv2=+$('cS').value;goldProb=CHAOS_LEVELS[cv2].g;bombProb=CHAOS_LEVELS[cv2].b;
 currentRound=1;cumScores=players.map(()=>0);$('curR').textContent=1;
 isSlowmo=false;isEnded=false;currentGravity=GRAVITY_NORMAL;settleCount=0;particles=[];timeline=[];prevLeader=-1;isFinalBomb=false;finalBombFrame=0;finalBombSpawned=false;preMegaLeader=-1;initB();buildRanking();buildCheer();
+gameStats={goldCount:0,bombCount:0,megaGoldCount:0,megaBombCount:0,startTime:Date.now()};
 // If in room, re-sync to spectators
 if(roomRef&&isHost){
   roomRef.child('status').set('playing');
@@ -1388,11 +1496,11 @@ if(roomRef&&isHost){
   // Re-start sync interval
   startRoomSync();
 }
-countdown(()=>{startRec();startBGM();animate();startDropTimer();});}
+showCupPreview();}
 function back(){cancelAnimationFrame(animFrameId);clearInterval(dropTimer);stopRec();stopBGM();
 if(origPlayers){players=origPlayers;}isTiebreaker=false;origPlayers=null;origCumScores=null;origColors=null;tbRound=0;
 isSlowmo=false;isEnded=false;isFinalBomb=false;finalBombFrame=0;finalBombSpawned=false;currentGravity=GRAVITY_NORMAL;particles=[];resultPhase=0;confetti=[];dramaFrame=0;
-$('game').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('cd').style.display='none';$('roundSum').style.display='none';
+$('game').style.display='none';$('so').style.display='none';$('st2').style.display='none';$('cd').style.display='none';$('roundSum').style.display='none';$('cupPreview').style.display='none';
 // Clean up spectator
 const spec=$('specOverlay');if(spec)spec.remove();
 const specLv=$('specLive');if(specLv)specLv.remove();
@@ -3027,6 +3135,7 @@ function renderStreak(){}// Replaced by renderQuickStats
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     // ESC → navigate back depending on which screen is visible
+    if($('cupPreview').style.display==='flex'){$('cupPreview').style.display='none';back();return;}
     if($('game').style.display!=='none'&&(isEnded||!balls.some(b=>b.a))){back();return;}
     if($('histPanel').style.display!=='none'){backToMenu();return;}
     if($('joinScreen').style.display!=='none'){backToMenu();return;}

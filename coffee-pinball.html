@@ -125,6 +125,8 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 .cp-shuffle:hover{background:#E8927C;color:#1a1410}
 .cp-start{background:linear-gradient(135deg,#E8927C,#d4755e);color:#1a1410;border:none;font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:700;padding:10px 28px;border-radius:50px;cursor:pointer;transition:all .3s}
 .cp-start:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(232,146,124,.4)}
+.cp-back{background:none;border:none;color:#9a8a7a;font-family:'Noto Sans KR',sans-serif;font-size:13px;cursor:pointer;margin-top:8px;transition:color .2s}
+.cp-back:hover{color:#E8927C}
 /* Cheer buttons */
 #cheer{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:4;pointer-events:auto}
 .cbtn{background:rgba(30,27,24,.7);border:1px solid #3d3229;border-radius:14px;padding:3px 10px;font-size:10px;cursor:pointer;transition:all .2s;font-family:'Noto Sans KR',sans-serif;-webkit-tap-highlight-color:transparent}
@@ -390,7 +392,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
     <canvas id="cv" role="img" aria-label="Pinball game in progress"></canvas>
     <div id="so"></div><div id="st2">FINAL ROUND</div>
     <div id="et"></div>
-    <div id="cupPreview"><div class="cp-title">☕ Cup Order</div><canvas id="cpCanvas"></canvas><div class="cp-btns"><button class="cp-shuffle" onclick="shuffleCups()" aria-label="Shuffle cup order">🔀 Shuffle</button><button class="cp-start" onclick="confirmCups()" aria-label="Start game">▶ Start!</button></div></div>
+    <div id="cupPreview"><div class="cp-title">☕ Cup Order</div><canvas id="cpCanvas"></canvas><div class="cp-btns"><button class="cp-shuffle" onclick="shuffleCups()" aria-label="Shuffle cup order">🔀 Shuffle</button><button class="cp-start" onclick="confirmCups()" aria-label="Start game">▶ Start!</button></div><button class="cp-back" onclick="cancelPreview()" aria-label="Back to setup">← Back</button></div>
     <div id="cd"><div class="cds" id="cdS"></div><div class="cdn" id="cdN"></div><div class="cdg" id="cdG">DROP!</div></div>
     <div id="cheer" style="display:none"></div>
   </div>
@@ -1131,6 +1133,12 @@ function confirmCups(){
   $('cupPreview').style.display='none';
   if(shuffleAnimId){cancelAnimationFrame(shuffleAnimId);shuffleAnimId=null;}
   countdown(()=>{startRec();startBGM();animate();startDropTimer();});
+}
+function cancelPreview(){
+  $('cupPreview').style.display='none';
+  if(shuffleAnimId){cancelAnimationFrame(shuffleAnimId);shuffleAnimId=null;}
+  cancelAnimationFrame(animFrameId);clearInterval(dropTimer);
+  showScreen('setup');renderPlayers();
 }
 
 function initB(){shuffleColors();winner=null;balls=[];dropCount=0;clearInterval(dropTimer);cancelAnimationFrame(animFrameId);splashLines=[];splashDamage=players.map(()=>[]);
@@ -3135,7 +3143,7 @@ function renderStreak(){}// Replaced by renderQuickStats
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     // ESC → navigate back depending on which screen is visible
-    if($('cupPreview').style.display==='flex'){$('cupPreview').style.display='none';back();return;}
+    if($('cupPreview').style.display==='flex'){cancelPreview();return;}
     if($('game').style.display!=='none'&&(isEnded||!balls.some(b=>b.a))){back();return;}
     if($('histPanel').style.display!=='none'){backToMenu();return;}
     if($('joinScreen').style.display!=='none'){backToMenu();return;}

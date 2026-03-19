@@ -162,14 +162,14 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 .rst-name{flex:1}
 .rst-score{width:60px;text-align:right;font-family:'Noto Sans KR',sans-serif;font-weight:700}
 /* Responsive — all panels same width */
-#mainMenu,#lobby,#joinScreen,#histPanel,.hdr{max-width:500px;width:100%;padding-left:16px;padding-right:16px;box-sizing:border-box}
+#mainMenu,#lobby,#joinScreen,#histPanel,#devPanel,.hdr{max-width:500px;width:100%;padding-left:16px;padding-right:16px;box-sizing:border-box}
 @media(max-width:540px){
-  #mainMenu,#lobby,#joinScreen,#histPanel,#game,.hdr{max-width:100%;padding-left:12px;padding-right:12px}
+  #mainMenu,#lobby,#joinScreen,#histPanel,#devPanel,#game,.hdr{max-width:100%;padding-left:12px;padding-right:12px}
   .lobby-code{font-size:28px!important;letter-spacing:6px!important}
   .menu-btn{font-size:14px;padding:12px}
 }
 @media(min-width:768px){
-  #mainMenu,#lobby,#joinScreen,#histPanel{max-width:480px}
+  #mainMenu,#lobby,#joinScreen,#histPanel,#devPanel{max-width:480px}
 }
 @media(orientation:landscape) and (max-height:500px){
   body{padding-bottom:16px}
@@ -227,6 +227,48 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 .join-input:focus{border-color:#FFD700;box-shadow:0 0 12px rgba(255,215,0,.2)}
 .nick-input{width:80%;padding:10px;font-size:16px;text-align:center;background:#1e1b18;border:2px solid #5a4a3a;border-radius:12px;color:#e8d5c4;font-family:'Noto Sans KR',sans-serif;outline:none;margin:8px 0}
 .nick-input:focus{border-color:#E8927C}
+/* ═══ DEVELOPER DASHBOARD ═══ */
+#devPanel{display:none;max-width:560px;width:100%;padding:0 16px;margin:0 auto}
+.dev-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.dev-header h2{font-size:20px;font-weight:900;color:#E8927C}
+.dev-back{background:transparent;border:1.5px solid #3d3229;color:#9a8a7a;padding:6px 14px;border-radius:10px;font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;transition:all .15s}
+.dev-back:hover{border-color:#E8927C;color:#E8927C}
+.dev-tabs{display:flex;gap:6px;margin-bottom:14px}
+.dev-tab{flex:1;padding:10px 8px;border-radius:10px;border:1.5px solid #2d2319;background:#1a1714;color:#c0b0a0;font-size:12px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;text-align:center;transition:all .15s}
+.dev-tab:hover{border-color:#E8927C50}
+.dev-tab.active{border-color:#E8927C;background:#E8927C15;color:#E8927C}
+.dev-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.dev-card{background:#1a1714;border:1px solid #2d2319;border-radius:12px;padding:14px;text-align:center}
+.dev-card .dc-val{font-size:24px;font-weight:900;color:#E8927C;font-family:'Noto Sans KR',sans-serif}
+.dev-card .dc-lbl{font-size:11px;color:#9a8a7a;margin-top:4px;letter-spacing:1px}
+.dev-card.warn{border-color:#ef444450;background:#1a141450}
+.dev-section{background:#1a1714;border:1px solid #2d2319;border-radius:12px;padding:14px;margin-bottom:12px}
+.dev-section h3{font-size:14px;color:#E8927C;margin-bottom:10px;font-weight:700}
+.dev-table{width:100%;border-collapse:collapse;font-size:12px}
+.dev-table th{text-align:left;padding:6px 8px;color:#9a8a7a;border-bottom:1px solid #2d2319;font-weight:700}
+.dev-table td{padding:6px 8px;color:#c0b0a0;border-bottom:1px solid #1e1b18}
+.dev-table tr:hover td{background:#1e1b1850}
+.dev-badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700}
+.dev-badge.waiting{background:#3b82f620;color:#3b82f6;border:1px solid #3b82f640}
+.dev-badge.playing{background:#22c55e20;color:#22c55e;border:1px solid #22c55e40}
+.dev-badge.host_left{background:#ef444420;color:#ef4444;border:1px solid #ef444440}
+.dev-badge.stale{background:#f9731620;color:#f97316;border:1px solid #f9731640}
+.dev-del-btn{background:transparent;border:1px solid #ef444440;color:#ef4444;padding:3px 10px;border-radius:8px;font-size:11px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s}
+.dev-del-btn:hover{background:#ef444420;border-color:#ef4444}
+.dev-refresh{background:transparent;border:1.5px solid #3d3229;color:#9a8a7a;padding:6px 14px;border-radius:10px;font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;transition:all .15s}
+.dev-refresh:hover{border-color:#E8927C;color:#E8927C}
+.dev-room-row{display:flex;align-items:center;gap:8px;padding:10px;border-bottom:1px solid #2d2319;font-size:12px;color:#c0b0a0}
+.dev-room-row.stale{background:#f9731610;border-left:3px solid #f97316}
+.dev-room-row.dead{background:#ef444410;border-left:3px solid #ef4444}
+.dev-room-code{font-weight:900;color:#FFD700;font-size:14px;letter-spacing:2px;min-width:80px}
+.dev-room-info{flex:1;display:flex;flex-direction:column;gap:2px}
+.dev-room-meta{font-size:10px;color:#9a8a7a}
+.dev-empty{text-align:center;padding:24px;color:#5a4a3a;font-size:13px}
+.dev-stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.dev-stat-box{text-align:center;padding:8px;background:#1e1b18;border-radius:10px;border:1px solid #2d2319}
+.dev-stat-box .sv{font-size:18px;font-weight:900;color:#E8927C}
+.dev-stat-box .sl{font-size:10px;color:#9a8a7a;margin-top:2px}
+@media(max-width:540px){#devPanel{max-width:100%;padding-left:12px;padding-right:12px}.dev-cards{grid-template-columns:1fr 1fr}.dev-stat-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -452,6 +494,54 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
       <div class="hist-card"><h3>🏆 Most Coffee Bought</h3><canvas id="rankChart" height="200"></canvas></div>
       <div class="hist-card"><h3>📅 Monthly Stats (<span id="monthYear"></span>)</h3><canvas id="monthChart" height="180"></canvas></div>
     </div>
+  </div>
+</div>
+
+<!-- Developer Dashboard -->
+<div id="devPanel">
+  <div class="dev-header">
+    <h2>🛠️ Dev Dashboard</h2>
+    <button class="dev-back" onclick="hideDevPanel()" aria-label="Back to game">← Back to Game</button>
+  </div>
+  <div class="dev-tabs">
+    <button class="dev-tab active" onclick="switchDevTab('devDash',this)" aria-label="Dashboard tab">📊 Dashboard</button>
+    <button class="dev-tab" onclick="switchDevTab('devStats',this)" aria-label="Statistics tab">📈 Statistics</button>
+    <button class="dev-tab" onclick="switchDevTab('devRooms',this)" aria-label="Rooms tab">🏠 Rooms</button>
+  </div>
+  <!-- Tab 1: Real-time Dashboard -->
+  <div id="devDash">
+    <div class="dev-cards" id="devDashCards">
+      <div class="dev-card"><div class="dc-val" id="dcActiveRooms">-</div><div class="dc-lbl">Active Rooms</div></div>
+      <div class="dev-card"><div class="dc-val" id="dcOnline">-</div><div class="dc-lbl">Online Players</div></div>
+      <div class="dev-card"><div class="dc-val" id="dcPlaying">-</div><div class="dc-lbl">Playing</div></div>
+      <div class="dev-card"><div class="dc-val" id="dcWaiting">-</div><div class="dc-lbl">Waiting</div></div>
+    </div>
+    <div class="dev-section">
+      <h3>🔴 Live Activity</h3>
+      <div id="devActivity" style="max-height:200px;overflow-y:auto;font-size:11px;color:#9a8a7a">
+        <div class="dev-empty">Connecting to Firebase...</div>
+      </div>
+    </div>
+  </div>
+  <!-- Tab 2: Game Statistics -->
+  <div id="devStats" style="display:none">
+    <div class="dev-stat-grid" id="devStatGrid"></div>
+    <div class="dev-section">
+      <h3>🏆 Player Win Rates</h3>
+      <div id="devWinTable"></div>
+    </div>
+    <div class="dev-section">
+      <h3>📅 Monthly Trends</h3>
+      <canvas id="devMonthChart" height="200"></canvas>
+    </div>
+  </div>
+  <!-- Tab 3: Room Management -->
+  <div id="devRooms" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:13px;color:#9a8a7a" id="devRoomCount">Loading...</span>
+      <button class="dev-refresh" onclick="loadDevRooms()" aria-label="Refresh rooms">🔄 Refresh</button>
+    </div>
+    <div id="devRoomList"></div>
   </div>
 </div>
 
@@ -1525,7 +1615,7 @@ let roomRef=null,roomId=null,isHost=false,myNick='',roomUnsub=null;
 
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r;}
 
-const ALL_SCREENS=['mainMenu','setup','joinScreen','createScreen','lobby','histPanel','game','invitePage'];
+const ALL_SCREENS=['mainMenu','setup','joinScreen','createScreen','lobby','histPanel','game','invitePage','devPanel'];
 function showScreen(id){ALL_SCREENS.forEach(s=>{const el=$(s);if(el)el.style.display=s===id?(s==='game'?'flex':'block'):'none';});}
 
 function backToMenu(){userNav=false;
@@ -2575,6 +2665,12 @@ function listenHostCheers(){
 // Check URL for room invite
 async function checkInvite(){
   const params=new URLSearchParams(window.location.search);
+  // Developer dashboard access
+  if(params.get('dev')==='true'){
+    userNav=true;
+    showDevPanel();
+    return;
+  }
   const code=params.get('room');
   if(code){
     // Hide mainMenu, show invite landing page
@@ -3139,11 +3235,193 @@ function renderMonthly(data){
 function renderTable(){}// Replaced by renderRoomGames
 function renderStreak(){}// Replaced by renderQuickStats
 
+// ═══ DEVELOPER DASHBOARD ═══
+let _devRoomsListener=null;
+let _devMonthChart=null;
+
+function showDevPanel(){
+  userNav=true;
+  showScreen('devPanel');
+  loadDevDashboard();
+}
+
+function hideDevPanel(){
+  // Clean up Firebase listeners
+  if(_devRoomsListener&&db){db.ref('rooms').off('value',_devRoomsListener);_devRoomsListener=null;}
+  if(_devMonthChart){_devMonthChart.destroy();_devMonthChart=null;}
+  showScreen('mainMenu');
+  window.history.replaceState({},'',window.location.pathname);
+}
+
+function switchDevTab(tabId,btn){
+  ['devDash','devStats','devRooms'].forEach(id=>{$(id).style.display='none';});
+  $(tabId).style.display='block';
+  document.querySelectorAll('.dev-tab').forEach(t=>t.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  // Load data on tab switch
+  if(tabId==='devDash')loadDevDashboard();
+  else if(tabId==='devStats')loadDevStats();
+  else if(tabId==='devRooms')loadDevRooms();
+}
+
+function loadDevDashboard(){
+  if(!db){$('devActivity').innerHTML='<div class="dev-empty">Firebase not connected</div>';return;}
+  // Clean previous listener
+  if(_devRoomsListener){db.ref('rooms').off('value',_devRoomsListener);_devRoomsListener=null;}
+  const activityLog=[];
+  _devRoomsListener=db.ref('rooms').on('value',snap=>{
+    const rooms=snap.val()||{};
+    const entries=Object.entries(rooms);
+    const activeRooms=entries.length;
+    const playingRooms=entries.filter(([,r])=>r.status==='playing').length;
+    const waitingRooms=entries.filter(([,r])=>r.status==='waiting').length;
+    const hostLeftRooms=entries.filter(([,r])=>r.status==='host_left').length;
+    let totalOnline=0;
+    entries.forEach(([,r])=>{
+      if(r.players)totalOnline+=Object.values(r.players).filter(p=>p.online).length;
+    });
+    $('dcActiveRooms').textContent=activeRooms;
+    $('dcOnline').textContent=totalOnline;
+    $('dcPlaying').textContent=playingRooms;
+    $('dcWaiting').textContent=waitingRooms;
+    // Update warn card for host_left
+    const cards=document.querySelectorAll('#devDashCards .dev-card');
+    if(cards[0])cards[0].classList.toggle('warn',hostLeftRooms>0);
+    // Activity log
+    const now=new Date().toLocaleTimeString();
+    activityLog.unshift(`<div style="padding:3px 0;border-bottom:1px solid #1e1b18"><span style="color:#5a4a3a">${now}</span> — ${activeRooms} rooms, ${totalOnline} online, ${playingRooms} playing, ${waitingRooms} waiting${hostLeftRooms?' <span style="color:#ef4444">⚠ '+hostLeftRooms+' host_left</span>':''}</div>`);
+    if(activityLog.length>50)activityLog.length=50;
+    $('devActivity').innerHTML=activityLog.join('');
+  });
+}
+
+async function loadDevStats(){
+  const data=await loadHistory();
+  if(!data.length){
+    $('devStatGrid').innerHTML='';
+    $('devWinTable').innerHTML='<div class="dev-empty">No game data yet</div>';
+    return;
+  }
+  const totalGames=data.length;
+  const allPlayers=new Set();
+  data.forEach(g=>{if(g.players)g.players.split(',').forEach(p=>allPlayers.add(p.trim()));});
+  const durations=data.filter(g=>g.gameDuration).map(g=>g.gameDuration);
+  const avgDuration=durations.length?Math.round(durations.reduce((a,b)=>a+b,0)/durations.length):0;
+  const totalGold=data.reduce((s,g)=>s+(g.goldCount||0),0);
+  const totalBomb=data.reduce((s,g)=>s+(g.bombCount||0),0);
+  const soloCount=data.filter(g=>g.mode==='solo').length;
+  const onlineCount=data.filter(g=>g.mode==='online').length;
+  const fmtDur=avgDuration>0?(avgDuration>=60?Math.floor(avgDuration/60)+'m '+avgDuration%60+'s':avgDuration+'s'):'N/A';
+
+  $('devStatGrid').innerHTML=`
+    <div class="dev-stat-box"><div class="sv">${totalGames}</div><div class="sl">Total Games</div></div>
+    <div class="dev-stat-box"><div class="sv">${allPlayers.size}</div><div class="sl">Unique Players</div></div>
+    <div class="dev-stat-box"><div class="sv">${fmtDur}</div><div class="sl">Avg Duration</div></div>
+    <div class="dev-stat-box"><div class="sv">${totalGold}</div><div class="sl">⭐ Gold Balls</div></div>
+    <div class="dev-stat-box"><div class="sv">${totalBomb}</div><div class="sl">💥 Bomb Balls</div></div>
+    <div class="dev-stat-box"><div class="sv">${soloCount}/${onlineCount}</div><div class="sl">Solo / Online</div></div>`;
+
+  // Player win rate table
+  const winMap={},playMap={};
+  data.forEach(g=>{
+    if(!g.players||!g.winner)return;
+    const ps=g.players.split(',').map(p=>p.trim());
+    const winners=g.winner.split(',').map(w=>w.trim());
+    ps.forEach(p=>{playMap[p]=(playMap[p]||0)+1;});
+    winners.forEach(w=>{winMap[w]=(winMap[w]||0)+1;});
+  });
+  const playerStats=Object.keys(playMap).map(p=>({
+    name:p,played:playMap[p],wins:winMap[p]||0,
+    rate:Math.round((winMap[p]||0)/playMap[p]*100)
+  })).sort((a,b)=>b.rate-a.rate||b.wins-a.wins);
+
+  let tableHtml='<table class="dev-table"><thead><tr><th>Player</th><th>Played</th><th>Wins</th><th>Rate</th></tr></thead><tbody>';
+  playerStats.forEach(p=>{
+    const rateColor=p.rate>=60?'#22c55e':p.rate>=40?'#F5C563':'#ef4444';
+    tableHtml+=`<tr><td>${p.name}</td><td>${p.played}</td><td>${p.wins}</td><td style="color:${rateColor};font-weight:700">${p.rate}%</td></tr>`;
+  });
+  tableHtml+='</tbody></table>';
+  if(!playerStats.length)tableHtml='<div class="dev-empty">No player data</div>';
+  $('devWinTable').innerHTML=tableHtml;
+
+  // Monthly trends chart
+  renderDevMonthChart(data);
+}
+
+function renderDevMonthChart(data){
+  if(_devMonthChart){_devMonthChart.destroy();_devMonthChart=null;}
+  const canvas=$('devMonthChart');
+  if(!canvas||!window.Chart)return;
+  const monthMap={};
+  data.forEach(g=>{
+    if(!g.date)return;
+    const m=g.date.substring(0,7);// YYYY-MM
+    monthMap[m]=(monthMap[m]||0)+1;
+  });
+  const sorted=Object.entries(monthMap).sort((a,b)=>a[0].localeCompare(b[0]));
+  const labels=sorted.map(([m])=>m);
+  const vals=sorted.map(([,c])=>c);
+  _devMonthChart=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'Games',data:vals,backgroundColor:'#E8927C40',borderColor:'#E8927C',borderWidth:1}]},
+    options:{responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#9a8a7a'},grid:{color:'#2d2319'}},
+        y:{ticks:{color:'#9a8a7a',stepSize:1},grid:{color:'#2d2319'},beginAtZero:true}}}
+  });
+}
+
+async function loadDevRooms(){
+  if(!db){$('devRoomList').innerHTML='<div class="dev-empty">Firebase not connected</div>';$('devRoomCount').textContent='No connection';return;}
+  $('devRoomCount').textContent='Loading...';
+  try{
+    const snap=await db.ref('rooms').once('value');
+    const rooms=snap.val()||{};
+    const entries=Object.entries(rooms);
+    $('devRoomCount').textContent=entries.length+' room'+(entries.length!==1?'s':'');
+    if(!entries.length){$('devRoomList').innerHTML='<div class="dev-empty">No rooms found</div>';return;}
+    const now=Date.now();
+    let html='';
+    entries.forEach(([code,room])=>{
+      const playerCount=room.players?Object.keys(room.players).length:0;
+      const onlineCount=room.players?Object.values(room.players).filter(p=>p.online).length:0;
+      const created=room.createdAt?new Date(room.createdAt).toLocaleString():'Unknown';
+      const ageHrs=room.createdAt?Math.round((now-room.createdAt)/3600000):0;
+      const isStale=room.status==='waiting'&&ageHrs>6;
+      const isDead=room.status==='host_left';
+      const rowClass=isDead?'dead':isStale?'stale':'';
+      html+=`<div class="dev-room-row ${rowClass}">
+        <div class="dev-room-code">${code}</div>
+        <div class="dev-room-info">
+          <div>Host: <strong>${room.host||'?'}</strong> — ${room.roomName||'Coffee Game'}</div>
+          <div class="dev-room-meta">
+            <span class="dev-badge ${room.status||'waiting'}">${room.status||'waiting'}</span>
+            👥 ${onlineCount}/${playerCount} — Created: ${created}${ageHrs>0?' ('+ageHrs+'h ago)':''}
+          </div>
+        </div>
+        <button class="dev-del-btn" onclick="deleteDevRoom('${code}')" aria-label="Delete room ${code}">🗑️</button>
+      </div>`;
+    });
+    $('devRoomList').innerHTML=html;
+  }catch(e){
+    console.warn('loadDevRooms:',e);
+    $('devRoomList').innerHTML='<div class="dev-empty">Error loading rooms</div>';
+  }
+}
+
+async function deleteDevRoom(code){
+  if(!confirm('Delete room '+code+'?'))return;
+  try{
+    await db.ref('rooms/'+code).remove();
+    loadDevRooms();
+  }catch(e){console.warn('deleteDevRoom:',e);alert('Failed to delete: '+e.message);}
+}
+
 // ═══ Keyboard Navigation ═══
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     // ESC → navigate back depending on which screen is visible
     if($('cupPreview').style.display==='flex'){cancelPreview();return;}
+    if($('devPanel').style.display!=='none'){hideDevPanel();return;}
     if($('game').style.display!=='none'&&(isEnded||!balls.some(b=>b.a))){back();return;}
     if($('histPanel').style.display!=='none'){backToMenu();return;}
     if($('joinScreen').style.display!=='none'){backToMenu();return;}

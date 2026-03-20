@@ -2286,9 +2286,9 @@ function startSpecCanvas(){
       c.fillStyle='#1a1714';c.fillRect(0,0,CANVAS_W,CANVAS_H);
       const cpCups=specCupPreview.cups;
       const cpN=cpCups.length;
-      const cpMargin=40,cpW=(CANVAS_W-cpMargin*2)/cpN,cpH=70,cpY=CANVAS_H/2-cpH/2,cpIns=6;
+      const cpMargin=20,cpW=(CANVAS_W-cpMargin*2)/cpN,cpH=70,cpY=20,cpIns=6;
       // Title
-      c.font='bold 24px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#E8927C';
+      c.font='bold 20px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#e8d5c4';
       c.fillText('☕ Cup Order',CANVAS_W/2,cpY-40);
       if(specCupPrevAnim){
         // Shuffle animation (shrink → jitter → expand)

@@ -1247,6 +1247,65 @@ function drawCupPreview(){
     ctx.fillText(`#${i+1}`,cx+cupW/2,cupY+cupH+18);
   }
 }
+// Spectator version: draws cups from specCupPreview data on #cpCanvas
+function drawSpecCupPreview(cupData){
+  if(!cupData||!cupData.length)return;
+  const cv=$('cpCanvas'),n=cupData.length;
+  const pw=Math.min(460,CANVAS_W||500),ph=140;
+  cv.width=pw;cv.height=ph;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,pw,ph);
+  const margin=20,cupW=(pw-margin*2)/n,cupH=70,cupY=20,ins=6;
+  for(let i=0;i<n;i++){
+    const cx=margin+i*cupW,cl=cupData[i].cl,nm=cupData[i].nm;
+    ctx.beginPath();ctx.moveTo(cx,cupY);ctx.lineTo(cx+cupW,cupY);ctx.lineTo(cx+cupW-ins,cupY+cupH);ctx.lineTo(cx+ins,cupY+cupH);ctx.closePath();
+    ctx.fillStyle='#1e1b18';ctx.fill();ctx.strokeStyle=cl;ctx.lineWidth=2.5;ctx.stroke();
+    if(i<n-1){ctx.beginPath();ctx.moveTo(cx+cupW,cupY);ctx.lineTo(cx+cupW,cupY+cupH);ctx.strokeStyle='#3d3229';ctx.lineWidth=1;ctx.stroke();}
+    let fs=cupW<50?13:cupW<70?16:20;
+    ctx.fillStyle='#e8d5c4';ctx.font=`bold ${fs}px "Noto Sans KR",sans-serif`;ctx.textAlign='center';
+    let dn=nm;if(ctx.measureText(dn).width>cupW-10)dn=dn.substring(0,3)+'…';
+    ctx.fillText(dn,cx+cupW/2,cupY+cupH/2+fs/3);
+    ctx.fillStyle='#9a8a7a';ctx.font='11px "Noto Sans KR",sans-serif';
+    ctx.fillText('#'+(i+1),cx+cupW/2,cupY+cupH+18);
+  }
+}
+let specShuffleAnimId=null;
+function specShuffleCups(oldCups,newCups){
+  if(specShuffleAnimId)return;
+  initAudio();
+  const cv=$('cpCanvas'),ctx=cv.getContext('2d');
+  const n=newCups.length,pw=cv.width,ph=cv.height;
+  const margin=20,cupW=(pw-margin*2)/n,cupH=70,cupY=20,ins=6;
+  const duration=700,start=performance.now();
+  let sfxPhase=-1;
+  playTone(600,.12,'sine',.15);setTimeout(()=>playTone(400,.1,'sine',.12),50);setTimeout(()=>playTone(250,.1,'sine',.1),100);
+  function animFrame(now){
+    const t=Math.min((now-start)/duration,1);
+    const curPhase=t<0.3?0:t<0.6?1:2;
+    if(curPhase!==sfxPhase){
+      sfxPhase=curPhase;
+      if(curPhase===1){for(let i=0;i<5;i++)setTimeout(()=>playTone(400+Math.random()*300,.05,'triangle',.12),i*40);}
+      else if(curPhase===2){playTone(500,.1,'sine',.15);setTimeout(()=>playTone(700,.1,'sine',.12),60);}
+    }
+    ctx.clearRect(0,0,pw,ph);
+    for(let i=0;i<n;i++){
+      const cx=margin+i*cupW;
+      let nm,cl,ox=0,alpha=1;
+      if(t<0.3){const p=t/0.3,ease=p*p;nm=oldCups[i]?oldCups[i].nm:'?';cl=oldCups[i]?oldCups[i].cl:'#E8927C';ox=(pw/2-(cx+cupW/2))*ease*0.6;alpha=1-ease*0.4;}
+      else if(t<0.6){nm='?';cl='#E8927C';ox=(pw/2-(cx+cupW/2))*0.6+(Math.random()-.5)*12;alpha=0.6+Math.random()*0.2;}
+      else{const p=(t-0.6)/0.4,ease=1-Math.pow(1-p,3);nm=newCups[i].nm;cl=newCups[i].cl;ox=(pw/2-(cx+cupW/2))*0.6*(1-ease);alpha=0.6+ease*0.4;}
+      ctx.save();ctx.globalAlpha=alpha;const dx=cx+ox;
+      ctx.beginPath();ctx.moveTo(dx,cupY);ctx.lineTo(dx+cupW,cupY);ctx.lineTo(dx+cupW-ins,cupY+cupH);ctx.lineTo(dx+ins,cupY+cupH);ctx.closePath();
+      ctx.fillStyle='#1e1b18';ctx.fill();ctx.strokeStyle=cl;ctx.lineWidth=2.5;ctx.stroke();
+      let fs=cupW<50?13:cupW<70?16:20;ctx.fillStyle='#e8d5c4';ctx.font=`bold ${fs}px "Noto Sans KR",sans-serif`;ctx.textAlign='center';
+      let dn=nm;if(nm!=='?'&&ctx.measureText(dn).width>cupW-10)dn=dn.substring(0,3)+'…';
+      ctx.fillText(dn,dx+cupW/2,cupY+cupH/2+fs/3);ctx.restore();
+    }
+    if(t<1){specShuffleAnimId=requestAnimationFrame(animFrame);}
+    else{specShuffleAnimId=null;drawSpecCupPreview(newCups);playTone(900,.18,'sine',.15);setTimeout(()=>playTone(1200,.15,'sine',.12),80);}
+  }
+  specShuffleAnimId=requestAnimationFrame(animFrame);
+}
 let shuffleAnimId=null;
 function shuffleCups(){
   if(shuffleAnimId)return;// prevent double click
@@ -1956,14 +2015,30 @@ function listenRoom(){
     if(gs&&!isHost)updateSpectator(gs);
   });
 
-  // Listen for cup preview (spectator sees host's cup shuffle)
+  // Listen for cup preview (spectator sees host's cup shuffle via #cupPreview overlay)
   roomRef.child('cupPreview').on('value',snap=>{
     const data=snap.val();
     if(isHost)return;
-    if(data&&specCupPreview&&data.shuffled&&data.shuffled!==specCupPreview.shuffled){
-      specCupPrevAnim={oldCups:specCupPreview.cups,start:performance.now(),duration:700,sfxPhase:-1};
-      // Start sound: descending whoosh (same as host)
-      initAudio();playTone(600,.12,'sine',.15);setTimeout(()=>playTone(400,.1,'sine',.12),50);setTimeout(()=>playTone(250,.1,'sine',.1),100);
+    const cpDiv=$('cupPreview');
+    if(data&&data.cups){
+      // Show #cupPreview overlay (same as host) with buttons hidden, add info text
+      cpDiv.style.display='flex';
+      const btns=cpDiv.querySelector('.cp-btns');if(btns)btns.style.display='none';
+      const back=cpDiv.querySelector('.cp-back');if(back)back.style.display='none';
+      if(!cpDiv.querySelector('.cp-info')){const info=document.createElement('div');info.className='cp-info';info.style.cssText='font-size:14px;color:#9a8a7a;font-family:"Noto Sans KR",sans-serif';info.textContent='Host is setting cup order...';cpDiv.appendChild(info);}
+      // Shuffle animation or static draw
+      if(specCupPreview&&specCupPreview.cups&&data.shuffled&&data.shuffled!==specCupPreview.shuffled){
+        specShuffleCups(specCupPreview.cups,data.cups);
+      }else{
+        drawSpecCupPreview(data.cups);
+      }
+    }else{
+      // Hide overlay when cupPreview cleared (game starting)
+      cpDiv.style.display='none';
+      const btns=cpDiv.querySelector('.cp-btns');if(btns)btns.style.display='flex';
+      const back=cpDiv.querySelector('.cp-back');if(back)back.style.display='';
+      const info=cpDiv.querySelector('.cp-info');if(info)info.remove();
+      if(specShuffleAnimId){cancelAnimationFrame(specShuffleAnimId);specShuffleAnimId=null;}
     }
     specCupPreview=data;
   });
@@ -2281,55 +2356,10 @@ function startSpecCanvas(){
       specAnim=requestAnimationFrame(dS);return;
     }
 
-    // Cup preview overlay (before game starts — synced from host)
+    // Cup preview is now handled by #cupPreview HTML overlay (same as host)
+    // Just draw dark background when cup preview is active
     if(specCupPreview&&specResultPhase===0){
       c.fillStyle='#1a1714';c.fillRect(0,0,CANVAS_W,CANVAS_H);
-      const cpCups=specCupPreview.cups;
-      const cpN=cpCups.length;
-      const cpMargin=20,cpW=(CANVAS_W-cpMargin*2)/cpN,cpH=70,cpY=CANVAS_H/2-cpH/2,cpIns=6;
-      // Title
-      c.font='bold 20px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#e8d5c4';
-      c.fillText('☕ Cup Order',CANVAS_W/2,cpY-40);
-      if(specCupPrevAnim){
-        // Shuffle animation (shrink → jitter → expand)
-        const at=Math.min((performance.now()-specCupPrevAnim.start)/specCupPrevAnim.duration,1);
-        // Phase-based sound effects (same as host)
-        const curPhase=at<0.3?0:at<0.6?1:2;
-        if(curPhase!==specCupPrevAnim.sfxPhase){
-          specCupPrevAnim.sfxPhase=curPhase;
-          if(curPhase===1){for(let si=0;si<5;si++)setTimeout(()=>playTone(400+Math.random()*300,.05,'triangle',.12),si*40);}
-          else if(curPhase===2){playTone(500,.1,'sine',.15);setTimeout(()=>playTone(700,.1,'sine',.12),60);}
-        }
-        for(let i=0;i<cpN;i++){
-          const cx=cpMargin+i*cpW;
-          let nm,cl,ox=0,alpha=1;
-          if(at<0.3){const p=at/0.3,ease=p*p;nm=specCupPrevAnim.oldCups[i]?specCupPrevAnim.oldCups[i].nm:'?';cl=specCupPrevAnim.oldCups[i]?specCupPrevAnim.oldCups[i].cl:'#E8927C';ox=(CANVAS_W/2-(cx+cpW/2))*ease*0.6;alpha=1-ease*0.4;}
-          else if(at<0.6){nm='?';cl='#E8927C';ox=(CANVAS_W/2-(cx+cpW/2))*0.6+(Math.random()-.5)*12;alpha=0.6+Math.random()*0.2;}
-          else{const p=(at-0.6)/0.4,ease=1-Math.pow(1-p,3);nm=cpCups[i].nm;cl=cpCups[i].cl;ox=(CANVAS_W/2-(cx+cpW/2))*0.6*(1-ease);alpha=0.6+ease*0.4;}
-          c.save();c.globalAlpha=alpha;const dx=cx+ox;
-          c.beginPath();c.moveTo(dx,cpY);c.lineTo(dx+cpW,cpY);c.lineTo(dx+cpW-cpIns,cpY+cpH);c.lineTo(dx+cpIns,cpY+cpH);c.closePath();
-          c.fillStyle='#1e1b18';c.fill();c.strokeStyle=cl;c.lineWidth=2.5;c.stroke();
-          let fs=cpW<50?13:cpW<70?16:20;c.fillStyle='#e8d5c4';c.font=`bold ${fs}px "Noto Sans KR",sans-serif`;c.textAlign='center';
-          let dn=nm;if(nm!=='?'&&c.measureText(dn).width>cpW-10)dn=dn.substring(0,3)+'…';
-          c.fillText(dn,dx+cpW/2,cpY+cpH/2+fs/3);c.restore();
-        }
-        if(at>=1){playTone(900,.18,'sine',.15);setTimeout(()=>playTone(1200,.15,'sine',.12),80);specCupPrevAnim=null;}
-      }else{
-        // Static cups
-        for(let i=0;i<cpN;i++){
-          const cx=cpMargin+i*cpW,cl=cpCups[i].cl,nm=cpCups[i].nm;
-          c.beginPath();c.moveTo(cx,cpY);c.lineTo(cx+cpW,cpY);c.lineTo(cx+cpW-cpIns,cpY+cpH);c.lineTo(cx+cpIns,cpY+cpH);c.closePath();
-          c.fillStyle='#1e1b18';c.fill();c.strokeStyle=cl;c.lineWidth=2.5;c.stroke();
-          let fs=cpW<50?13:cpW<70?16:20;c.fillStyle='#e8d5c4';c.font=`bold ${fs}px "Noto Sans KR",sans-serif`;c.textAlign='center';
-          let dn=nm;if(c.measureText(dn).width>cpW-10)dn=dn.substring(0,3)+'…';
-          c.fillText(dn,cx+cpW/2,cpY+cpH/2+fs/3);
-          c.fillStyle='#9a8a7a';c.font='11px "Noto Sans KR",sans-serif';
-          c.fillText('#'+(i+1),cx+cpW/2,cpY+cpH+18);
-        }
-      }
-      // Info text
-      c.font='14px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#9a8a7a';
-      c.fillText('Host is setting cup order...',CANVAS_W/2,cpY+cpH+50);
       specAnim=requestAnimationFrame(dS);return;
     }
 

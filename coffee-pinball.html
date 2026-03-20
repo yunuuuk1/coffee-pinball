@@ -2436,13 +2436,17 @@ function startSpecCanvas(){
     const grav=isMegaPhase?GRAVITY_FINAL:isSlowPhase?GRAVITY_SLOW:GRAVITY_NORMAL;
     
     specBalls.forEach((b,i)=>{
-      if(isNaN(b.vx))b.vx=0;if(isNaN(b.vy))b.vy=0;
-      b.vy+=grav;b.x+=b.vx;b.y+=b.vy;
-      // Continuous lerp toward server target position
       if(specTargetBalls[i]){
         const t=specTargetBalls[i];
-        b.x+=(t.x-b.x)*0.25;
-        b.y+=(t.y-b.y)*0.25;
+        // Advance target prediction using server velocity + gravity
+        t.vy=(t.vy||0)+grav;
+        t.x+=(t.vx||0);t.y+=t.vy;
+        // Smooth lerp toward moving predicted target
+        b.x+=(t.x-b.x)*0.35;
+        b.y+=(t.y-b.y)*0.35;
+      }else{
+        if(isNaN(b.vy))b.vy=0;
+        b.vy+=grav;b.x+=(b.vx||0);b.y+=b.vy;
       }
       // Wall wrap
       if(b.x<-BALL_RADIUS*2){b.x=CANVAS_W+BALL_RADIUS;}else if(b.x>CANVAS_W+BALL_RADIUS*2){b.x=-BALL_RADIUS;}

@@ -1055,17 +1055,22 @@ function playReplay(){
   $('rs').style.display='none';$('roundSum').style.display='none';
   const cv2=$('cv'),ctx=cv2.getContext('2d');
   let fi=0;const rd=replayData;const cupLayouts=cups;
+  const replayStart=performance.now();
+  const REPLAY_SPEED=3;// 3x speed
   function drawReplayFrame(){
     if(fi>=rd.frames.length){
-      // Replay done — show result again
       $('rs').style.display='block';return;
     }
+    const elapsed=(performance.now()-replayStart)*REPLAY_SPEED;
+    // Advance to the frame matching current elapsed time
+    while(fi<rd.frames.length-1&&rd.frames[fi+1].t<=elapsed)fi++;
+    if(rd.frames[fi].t>elapsed){requestAnimationFrame(drawReplayFrame);return;}
     const f=rd.frames[fi];
     drawBackground(ctx,CANVAS_W,CANVAS_H);
     // Progress bar
     ctx.fillStyle='#3d3229';ctx.fillRect(10,CANVAS_H-8,CANVAS_W-20,4);
     ctx.fillStyle='#E8927C';ctx.fillRect(10,CANVAS_H-8,(CANVAS_W-20)*(fi/rd.frames.length),4);
-    ctx.fillStyle='#5a4a3a';ctx.font='11px "Noto Sans KR",sans-serif';ctx.textAlign='left';ctx.fillText('🔄 REPLAY',10,20);
+    ctx.fillStyle='#5a4a3a';ctx.font='11px "Noto Sans KR",sans-serif';ctx.textAlign='left';ctx.fillText('🔄 REPLAY x3',10,20);
     // Obstacles
     for(let o of obstacles)drawObstacle(ctx,o);
     drawFunnelLines(ctx,cupLayouts,CANVAS_W,FUNNEL_Y,false);

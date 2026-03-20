@@ -2207,7 +2207,7 @@ function startRoomSync(){
   let sF=0;
   roomSyncInterval=setInterval(()=>{
     if(!roomRef)return;sF++;
-    if(sF%10===0){
+    if(sF%3===0){
       const cd2=cups.map(c=>({nm:c.nm,fl:c.fl,cl:c.cl}));
       const bd2=balls.filter(b=>b.a).slice(0,MAX_SYNC_BALLS).map(b=>({x:Math.round(b.x*10)/10,y:Math.round(b.y*10)/10,vx:Math.round(b.vx*100)/100,vy:Math.round(b.vy*100)/100,tp:b.tp}));
       const ms3=balls.filter(b=>b.tp==='megabomb'||b.tp==='megagold').length;
@@ -2434,9 +2434,15 @@ function startSpecCanvas(){
     // Physics prediction
     const grav=isMegaPhase?GRAVITY_FINAL:isSlowPhase?GRAVITY_SLOW:GRAVITY_NORMAL;
     
-    specBalls.forEach(b=>{
+    specBalls.forEach((b,i)=>{
       if(isNaN(b.vx))b.vx=0;if(isNaN(b.vy))b.vy=0;
       b.vy+=grav;b.x+=b.vx;b.y+=b.vy;
+      // Continuous lerp toward server target position
+      if(specTargetBalls[i]){
+        const t=specTargetBalls[i];
+        b.x+=(t.x-b.x)*0.25;
+        b.y+=(t.y-b.y)*0.25;
+      }
       // Wall wrap
       if(b.x<-BALL_RADIUS*2){b.x=CANVAS_W+BALL_RADIUS;}else if(b.x>CANVAS_W+BALL_RADIUS*2){b.x=-BALL_RADIUS;}
       // Trail
@@ -2526,29 +2532,22 @@ function updateSpectator(gs){
     clearTimeout(window._specToastTimer);
     window._specToastTimer=setTimeout(()=>{e.classList.remove('sh');},1200);
   }
-  // Sync balls — snap to server positions + adopt velocity for local prediction
+  // Sync balls — store targets, interpolation happens in render loop
   if(gs.balls){
     specTargetBalls=gs.balls;
     // Match ball count
     while(specBalls.length<specTargetBalls.length){
       const t=specTargetBalls[specBalls.length];
-      const nb={x:t.x,y:t.y,vx:t.vx||0,vy:t.vy||0,tp:t.tp,tr:[]};
-      specBalls.push(nb);
+      specBalls.push({x:t.x,y:t.y,vx:t.vx||0,vy:t.vy||0,tp:t.tp,tr:[]});
     }
     specBalls.length=specTargetBalls.length;
-    // Correct positions + set velocity
+    // Update velocity + type from server
     specBalls.forEach((b,i)=>{
       if(!specTargetBalls[i])return;
       const t=specTargetBalls[i];
-      // Smooth correction: handle wall wrap (big x jump = wrap, just snap)
-      const dx=Math.abs(b.x-t.x);
-      if(dx>100){b.x=t.x;b.tr=[];}// Wall wrap — snap position, clear trail
-      else{b.x=b.x*.3+t.x*.7;}
-      b.y=b.y*.3+t.y*.7;
-      // Adopt server velocity for prediction
-      b.vx=t.vx||0;
-      b.vy=t.vy||0;
-      b.tp=t.tp;
+      b.vx=t.vx||0;b.vy=t.vy||0;b.tp=t.tp;
+      // Wall wrap: big x jump = snap immediately
+      if(Math.abs(b.x-t.x)>100){b.x=t.x;b.tr=[];}
     });
   }else{specBalls=[];specTargetBalls=[];}
   // Result: start dramatic reveal (matches host timing) — only once per game

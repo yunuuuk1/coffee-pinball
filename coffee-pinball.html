@@ -1053,13 +1053,14 @@ function stopRec(){if(replayInterval){clearInterval(replayInterval);replayInterv
 function playReplay(){
   if(!replayData||!replayData.frames.length)return;
   $('rs').style.display='none';$('roundSum').style.display='none';
+  const gbtEl=document.querySelector('.gbt');if(gbtEl)gbtEl.style.display='none';
   const cv2=$('cv'),ctx=cv2.getContext('2d');
   let fi=0;const rd=replayData;const cupLayouts=cups;
   const replayStart=performance.now();
   const REPLAY_SPEED=3;// 3x speed
   function drawReplayFrame(){
     if(fi>=rd.frames.length){
-      $('rs').style.display='block';return;
+      $('rs').style.display='block';if(gbtEl)gbtEl.style.display='flex';return;
     }
     const elapsed=(performance.now()-replayStart)*REPLAY_SPEED;
     // Advance to the frame matching current elapsed time

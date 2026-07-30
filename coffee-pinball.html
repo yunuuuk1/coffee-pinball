@@ -91,6 +91,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;background:#E8927C;bo
 .df-btn{padding:4px 12px;border-radius:8px;border:1px solid #2d2319;background:transparent;color:#9a8a7a;font-size:11px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s}
 .df-btn:hover{border-color:#E8927C50}
 .df-btn.active{border-color:#E8927C;color:#E8927C;background:#E8927C10}
+#cvyBtn{width:100%;padding:8px;font-size:13px;margin-top:6px}
 /* History filter inputs */
 .hf-input{background:transparent;border:1px solid #2d2319;border-radius:8px;color:#e8d5c4;font-family:'Noto Sans KR',sans-serif;font-size:12px;padding:6px 10px;outline:none;transition:border-color .15s}
 .hf-select{background:#1e1b18;border:1px solid #2d2319;border-radius:8px;color:#c0b0a0;font-family:'Noto Sans KR',sans-serif;font-size:12px;padding:6px 10px;outline:none;transition:border-color .15s}
@@ -423,6 +424,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.7)}
     <input type="range" id="rS" min="1" max="5" value="1" step="1" oninput="document.getElementById('rD').textContent=this.value" aria-label="Number of Rounds">
     <div class="sm"><span>1</span><span>3</span><span>5</span></div>
   </div>
+  <div class="sb2">
+    <div class="sl">Moving Cups</div>
+    <button class="df-btn" id="cvyBtn" onclick="togConveyor()" aria-label="Toggle moving cups">🎢 Moving Cups: OFF</button>
+    <div class="sd">Cups slide right and wrap around during play</div>
+  </div>
   <div class="lg">
     <div class="li"><div class="ld" style="background:#8B5E3C"></div>Normal(+1)</div>
     <div class="li"><div class="ld" style="background:#FFD700"></div>Gold(-3)</div>
@@ -446,7 +452,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.7)}
     <canvas id="cv" role="img" aria-label="Pinball game in progress"></canvas>
     <div id="so"></div><div id="st2">FINAL ROUND</div>
     <div id="et"></div>
-    <div id="cupPreview"><div class="cp-title">☕ Cup Order</div><canvas id="cpCanvas"></canvas><div class="cp-btns"><button class="cp-shuffle" onclick="shuffleCups()" aria-label="Shuffle cup order">🔀 Shuffle</button><button class="cp-start" onclick="confirmCups()" aria-label="Start game">▶ Start!</button></div><button class="cp-back" onclick="cancelPreview()" aria-label="Back to setup">← Back</button></div>
+    <div id="cupPreview"><div class="cp-title">☕ Cup Order</div><canvas id="cpCanvas"></canvas><div class="cp-btns"><button class="cp-shuffle" onclick="shuffleCups()" aria-label="Shuffle cup order">🔀 Shuffle</button><button class="cp-shuffle" id="cpConvBtn" onclick="togConveyor()" aria-label="Toggle moving cups">🎢 Moving: OFF</button><button class="cp-start" onclick="confirmCups()" aria-label="Start game">▶ Start!</button></div><button class="cp-back" onclick="cancelPreview()" aria-label="Back to setup">← Back</button></div>
     <div id="cd"><div class="cds" id="cdS"></div><div class="cdn" id="cdN"></div><div class="cdg" id="cdG">DROP!</div></div>
     <div id="cheer" style="display:none"></div>
   </div>
@@ -639,6 +645,7 @@ const MAX_PLAYERS=10,MIN_PLAYERS=2;
 const MEGA_FIRST_FRAME=108,MEGA_SECOND_FRAME=158,SETTLE_THRESHOLD=330,MAX_SYNC_BALLS=20;
 const SHAPES=['circle','circle','triangle','diamond','rect','hexagon'];
 const CHAOS_LEVELS=[{g:0,b:0,l:'None'},{g:.06,b:.06,l:'Normal'},{g:.1,b:.1,l:'High'},{g:.18,b:.18,l:'Extreme'}];
+const CONVEYOR_SPEED=0.6,CUP_AREA_L=10,CUP_AREA_W=CANVAS_W-20;
 
 let players=['','',''],obstacles=[],balls=[],cups=[];
 let winner=null,animFrameId=null,dropTimer=null,dropCount=0,maxBalls=30,dropsPerPlayer=10;
@@ -654,8 +661,9 @@ let resultPhase=0; // 0=off,1=spotlight,2=confetti,3=done
 let goldProb=.06,bombProb=.06;
 let rec=null,ch=[],rBlb=null;
 let muted=false;
+let conveyorOn=false,conveyorOffset=0;
 // ═══ SETTINGS PERSISTENCE ═══
-function loadSettings(){try{const s=JSON.parse(localStorage.getItem('cpSettings')||'{}');if(s.muted!==undefined)muted=s.muted;return s;}catch(e){return {};}}
+function loadSettings(){try{const s=JSON.parse(localStorage.getItem('cpSettings')||'{}');if(s.muted!==undefined)muted=s.muted;if(s.conveyor!==undefined)conveyorOn=!!s.conveyor;return s;}catch(e){return {};}}
 function saveSettings(patch){try{const s=JSON.parse(localStorage.getItem('cpSettings')||'{}');Object.assign(s,patch);localStorage.setItem('cpSettings',JSON.stringify(s));}catch(e){}}
 const _savedSettings=loadSettings();
 // Multi-round
@@ -693,6 +701,10 @@ function startBGM(){
 function stopBGM(){try{if(bgmOsc){bgmOsc.stop();bgmOsc=null;}if(bgmLfo){bgmLfo.stop();bgmLfo=null;}}catch(e){}}
 function setBGMTense(){try{if(bgmOsc){bgmOsc.frequency.value=80;bgmLfo.frequency.value=2;}if(bgmGain)bgmGain.gain.value=.06;}catch(e){}}
 function togMute(){muted=!muted;const mb=$('muB');if(mb)mb.textContent=muted?'🔇':'🔊';saveSettings({muted});if(muted)stopBGM();else if(!isEnded&&dropCount>0)startBGM();}
+function togConveyor(){conveyorOn=!conveyorOn;conveyorOffset=0;saveSettings({conveyor:conveyorOn});updateConveyorUI();}
+function updateConveyorUI(){const t=conveyorOn;const b1=$('cvyBtn'),b2=$('cpConvBtn');
+if(b1){b1.classList.toggle('active',t);b1.textContent=t?'🎢 Moving Cups: ON':'🎢 Moving Cups: OFF';}
+if(b2){b2.classList.toggle('active',t);b2.textContent=t?'🎢 Moving: ON':'🎢 Moving: OFF';}}
 
 // ═══ SETUP ═══
 function updateDropDisplay(){const v=$('nS').value,n=players.filter(p=>p.trim()).length||players.length;$('nD').textContent=v;$('tD').textContent=`Total: ${v} × ${n} = ${v*players.length}`;saveSettings({dropsPerPlayer:+v});}
@@ -709,7 +721,7 @@ cups.forEach((c,i)=>{const p=Math.min(c.fl/bM*100,100);const f=$(`rf${i}`),ct=$(
 const nL=so[0];if(nL!==prevLeader&&prevLeader!==-1&&cups[nL].fl>0){timeline.push({tp:'lead',d:dropCount,t:`☕ ${cups[nL].nm} takes the lead!`,cl:cups[nL].cl});vibrate(50);}prevLeader=nL;}
 
 // ═══ CHEER ═══
-function buildCheer(){const ch2=$('cheer');ch2.innerHTML='';cups.forEach((c,i)=>{const b=document.createElement('button');b.className='cbtn';b.style.color=c.cl;b.style.borderColor=c.cl+'80';b.textContent=`${c.nm} cheer!`;b.onclick=b.ontouchstart=()=>{spawnParticles(c.x+c.w/2,c.y-10,c.cl,8);soundCheer(600+i*100);vibrate(30);};ch2.appendChild(b);});}
+function buildCheer(){const ch2=$('cheer');ch2.innerHTML='';cups.forEach((c,i)=>{const b=document.createElement('button');b.className='cbtn';b.style.color=c.cl;b.style.borderColor=c.cl+'80';b.textContent=`${c.nm} cheer!`;b.onclick=b.ontouchstart=()=>{spawnParticles(cupEffX(c,conveyorOn?conveyorOffset:0)+c.w/2,c.y-10,c.cl,8);soundCheer(600+i*100);vibrate(30);};ch2.appendChild(b);});}
 
 // ═══ TOAST / PARTICLES ═══
 function showToast(t,c){const e=$('et');e.textContent=t;e.style.color=c;e.classList.remove('sh');void e.offsetWidth;e.classList.add('sh');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>e.classList.remove('sh'),1200);}
@@ -812,6 +824,24 @@ let nm=cup.nm;if(ctx.measureText(nm).width>cup.w-8)nm=nm.substring(0,3)+'…';
 ctx.fillText(nm,cup.x+cup.w/2,cup.y+cup.h/2+nameFs/3);
 const cntFs=cup.w<40?8:cup.w<55?9:11;ctx.fillStyle=(isL&&slow)?'#ef4444':'#9a8a7a';ctx.font=`${cntFs}px "Noto Sans KR",sans-serif`;ctx.fillText(fl,cup.x+cup.w/2,cup.y+cup.h+16);});
 }
+// ═══ CUP CONVEYOR ═══
+function cupEffX(c,off){return CUP_AREA_L+((c.x-CUP_AREA_L+off)%CUP_AREA_W);}
+function effectiveCupLayouts(cupsArr,off){
+if(!off)return{layouts:cupsArr,map:cupsArr.map((_,i)=>i)};
+const R=CUP_AREA_L+CUP_AREA_W,items=[];
+cupsArr.forEach((c,i)=>{const ex=cupEffX(c,off);
+items.push({cup:{...c,x:ex},i});
+if(ex+c.w>R)items.push({cup:{...c,x:ex-CUP_AREA_W},i});});
+items.sort((a,b)=>a.cup.x-b.cup.x);
+return{layouts:items.map(t=>t.cup),map:items.map(t=>t.i)};}
+function drawCupsConveyor(ctx,cupsArr,states,shakes,slow,ins,off){
+if(!off){drawCupsFn(ctx,cupsArr,states,shakes,slow,ins);return;}
+const{layouts,map}=effectiveCupLayouts(cupsArr,off);
+const mStates=map.map(i=>states[i]),mShakes=shakes?map.map(i=>shakes[i]):null;
+const cy=cupsArr[0]?cupsArr[0].y:CANVAS_H-CUP_HEIGHT-NAME_HEIGHT;
+ctx.save();ctx.beginPath();ctx.rect(CUP_AREA_L,cy-70,CUP_AREA_W,CANVAS_H-(cy-70));ctx.clip();
+drawCupsFn(ctx,layouts,mStates,mShakes,slow,ins);
+ctx.restore();}
 function drawSpotlightOverlay(ctx,w,h,alpha){
 ctx.save();ctx.fillStyle=`rgba(0,0,0,${alpha})`;ctx.fillRect(0,0,w,h);
 const scX=w/2,scY=h/2-20;
@@ -1047,7 +1077,7 @@ setTimeout(()=>{ov.style.display='none';nm.style.display='';syncCD(null);cb();},
 
 // ═══ REPLAY RECORDING ═══
 let replayData=null,replayInterval=null;
-function startRec(){replayData={frames:[],players:[...players],colors:COLORS.slice(0,players.length),startTime:Date.now()};replayInterval=setInterval(()=>{if(!replayData||isEnded)return;replayData.frames.push({balls:balls.filter(b=>b.a).map(b=>({x:Math.round(b.x*10)/10,y:Math.round(b.y*10)/10,tp:b.tp})),cups:cups.map(c=>({fl:c.fl})),t:Date.now()-replayData.startTime});},200);}
+function startRec(){replayData={frames:[],players:[...players],colors:COLORS.slice(0,players.length),startTime:Date.now()};replayInterval=setInterval(()=>{if(!replayData||isEnded)return;replayData.frames.push({balls:balls.filter(b=>b.a).map(b=>({x:Math.round(b.x*10)/10,y:Math.round(b.y*10)/10,tp:b.tp})),cups:cups.map(c=>({fl:c.fl})),co:conveyorOn?Math.round(conveyorOffset*10)/10:0,t:Date.now()-replayData.startTime});},200);}
 function stopRec(){if(replayInterval){clearInterval(replayInterval);replayInterval=null;}}
 function playReplay(){
   if(!replayData||!replayData.frames.length)return;
@@ -1082,7 +1112,7 @@ function playReplay(){
     // Cups with recorded scores
     if(f.cups&&cupLayouts.length){
       const states=cupLayouts.map((c,i)=>({fl:f.cups[i]?f.cups[i].fl:0,cl:c.cl}));
-      drawCupsFn(ctx,cupLayouts,states,null,false,8);
+      drawCupsConveyor(ctx,cupLayouts,states,null,false,8,f.co||0);
     }
     fi++;
     requestAnimationFrame(drawReplayFrame);
@@ -1383,13 +1413,14 @@ function shuffleCups(){
 }
 function showCupPreview(){
   $('cupPreview').style.display='flex';
+  updateConveyorUI();
   drawCupPreview();
   if(roomRef&&isHost){roomRef.child('cupPreview').set({cups:cups.map(c=>({nm:c.nm,cl:c.cl}))});}
 }
 function confirmCups(){
   $('cupPreview').style.display='none';
   if(shuffleAnimId){cancelAnimationFrame(shuffleAnimId);shuffleAnimId=null;}
-  if(roomRef&&isHost){roomRef.child('cupPreview').set(null);roomRef.child('layout/cups').set(cups.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h})));}
+  if(roomRef&&isHost){roomRef.child('cupPreview').set(null);roomRef.child('layout/cups').set(cups.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h})));roomRef.child('layout/conveyor').set(conveyorOn?1:0);}
   countdown(()=>{startRec();startBGM();animate();startDropTimer();});
 }
 function cancelPreview(){
@@ -1399,7 +1430,7 @@ function cancelPreview(){
   showScreen('setup');renderPlayers();
 }
 
-function initB(){shuffleColors();winner=null;balls=[];dropCount=0;clearInterval(dropTimer);cancelAnimationFrame(animFrameId);splashDamage=players.map(()=>[]);
+function initB(){shuffleColors();winner=null;balls=[];dropCount=0;conveyorOffset=0;clearInterval(dropTimer);cancelAnimationFrame(animFrameId);splashDamage=players.map(()=>[]);
 const cv=$('cv');cv.width=CANVAS_W;cv.height=CANVAS_H;
 cv.style.width='';cv.style.minWidth='';
 // Obstacles
@@ -1482,11 +1513,12 @@ if(isFinalBomb&&finalBombSpawned){
 function getVertices(o){const{x,y,r,s,rt}=o;let v=[];switch(s){case'triangle':for(let i=0;i<3;i++){const a=rt+i*Math.PI*2/3-Math.PI/2;v.push({x:x+Math.cos(a)*r,y:y+Math.sin(a)*r});}break;case'diamond':{const rw2=r*1.1,rh=r*1.5;[{a:0,d:rh},{a:Math.PI/2,d:rw2},{a:Math.PI,d:rh},{a:Math.PI*1.5,d:rw2}].forEach(p=>{v.push({x:x+Math.cos(rt+p.a)*p.d,y:y+Math.sin(rt+p.a)*p.d});});break;}case'rect':{const hw=r*1.3,hh=r*.7;[{dx:-hw,dy:-hh},{dx:hw,dy:-hh},{dx:hw,dy:hh},{dx:-hw,dy:hh}].forEach(p=>{const ca=Math.cos(rt),sa=Math.sin(rt);v.push({x:x+p.dx*ca-p.dy*sa,y:y+p.dx*sa+p.dy*ca});});break;}case'hexagon':for(let i=0;i<6;i++){const a=rt+i*Math.PI/3;v.push({x:x+Math.cos(a)*r,y:y+Math.sin(a)*r});}break;default:return null;}return v;}
 function closestPointOnSeg(px,py,audioCtx,ay,bx,by){const dx=bx-audioCtx,dy=by-ay,l2=dx*dx+dy*dy;if(l2===0)return{x:audioCtx,y:ay};let t=((px-audioCtx)*dx+(py-ay)*dy)/l2;t=Math.max(0,Math.min(1,t));return{x:audioCtx+t*dx,y:ay+t*dy};}
 function checkPolyCollision(b,vt,cr){let mD=1e9,cp=null,nx=0,ny=0;for(let i=0;i<vt.length;i++){const a=vt[i],q=vt[(i+1)%vt.length],pt=closestPointOnSeg(b.x,b.y,a.x,a.y,q.x,q.y),dx=b.x-pt.x,dy=b.y-pt.y,d=Math.sqrt(dx*dx+dy*dy);if(d<mD){mD=d;cp=pt;if(d>0){nx=dx/d;ny=dy/d;}else{const ex=q.y-a.y,ey=-(q.x-a.x),el=Math.sqrt(ex*ex+ey*ey);nx=ex/el;ny=ey/el;}}}if(mD<cr){b.x=cp.x+nx*(cr+1);b.y=cp.y+ny*(cr+1);const d=b.vx*nx+b.vy*ny;b.vx=(b.vx-2*d*nx)*BOUNCE_COEFF+(Math.random()-.5)*RANDOM_BOUNCE;b.vy=(b.vy-2*d*ny)*BOUNCE_COEFF+(Math.random()-.5)*RANDOM_BOUNCE*.5;if(mD<cr*0.3){b.vx+=(Math.random()-.5)*3;b.vy+=2;}return true;}return false;}
-function getFunnel(){return{l:{x1:0,y1:FUNNEL_Y,x2:cups[0]?cups[0].x:10,y2:cups[0]?cups[0].y:CANVAS_H-CUP_HEIGHT-NAME_HEIGHT},r:{x1:CANVAS_W,y1:FUNNEL_Y,x2:cups[cups.length-1]?(cups[cups.length-1].x+cups[cups.length-1].w):CANVAS_W-10,y2:cups[0]?cups[0].y:CANVAS_H-CUP_HEIGHT-NAME_HEIGHT}};}
+function getFunnel(){return{l:{x1:0,y1:FUNNEL_Y,x2:CUP_AREA_L,y2:cups[0]?cups[0].y:CANVAS_H-CUP_HEIGHT-NAME_HEIGHT},r:{x1:CANVAS_W,y1:FUNNEL_Y,x2:CANVAS_W-CUP_AREA_L,y2:cups[0]?cups[0].y:CANVAS_H-CUP_HEIGHT-NAME_HEIGHT}};}
 function checkFunnelLine(b,x1,y1,x2,y2,pd){const cp=closestPointOnSeg(b.x,b.y,x1,y1,x2,y2),dx=b.x-cp.x,dy=b.y-cp.y,d=Math.sqrt(dx*dx+dy*dy);if(d<BALL_RADIUS+2&&d>0){const nx=dx/d,ny=dy/d;b.x=cp.x+nx*(BALL_RADIUS+2);b.y=cp.y+ny*(BALL_RADIUS+2);const dt=b.vx*nx+b.vy*ny;b.vx=(b.vx-2*dt*nx)*.6+pd*.3;b.vy=(b.vy-2*dt*ny)*.6;}}
 
 // ═══ PHYSICS ═══
-function updatePhysics(){const fw=getFunnel();for(let b of balls){if(!b.a)continue;
+function updatePhysics(){if(conveyorOn&&!isEnded)conveyorOffset=(conveyorOffset+CONVEYOR_SPEED)%CUP_AREA_W;
+const fw=getFunnel();for(let b of balls){if(!b.a)continue;
 const isMega=b.tp==='megabomb'||b.tp==='megagold';
 if(!b.pinHitTimer)b.pinHitTimer=0;
 b.vy+=isMega?GRAVITY_FINAL:currentGravity;
@@ -1501,8 +1533,8 @@ if(b.stk>20){b.vx=(Math.random()-.5)*4;b.vy=3+Math.random()*2;b.stk=0;}
 b.tr.push({x:b.x,y:b.y});if(b.tr.length>(isMega?10:6))b.tr.shift();b.x+=b.vx;b.y+=b.vy;
 if(b.x<-BALL_RADIUS*2){b.x=CANVAS_W+BALL_RADIUS;b.tr=[];}else if(b.x>CANVAS_W+BALL_RADIUS*2){b.x=-BALL_RADIUS;b.tr=[];}
 if(b.y>FUNNEL_Y-20){checkFunnelLine(b,fw.l.x1,fw.l.y1,fw.l.x2,fw.l.y2,1);checkFunnelLine(b,fw.r.x1,fw.r.y1,fw.r.x2,fw.r.y2,-1);
-for(let di=1;di<cups.length;di++){const c=cups[di];
-checkFunnelLine(b,c.x,c.y,c.x,c.y+c.h,b.x<c.x?-0.2:0.2);}}
+for(let di=0;di<cups.length;di++){const c=cups[di];const ex=conveyorOn?cupEffX(c,conveyorOffset):c.x;
+if(ex>CUP_AREA_L+1&&ex<CANVAS_W-CUP_AREA_L-1)checkFunnelLine(b,ex,c.y,ex,c.y+c.h,b.x<ex?-0.2:0.2);}}
 const buildRanking=isMega?(b.tp==='megagold'?BALL_RADIUS+4:BALL_RADIUS+5):BALL_RADIUS;// mega balls have larger collision
 let hitThisFrame=false;
 for(let o of obstacles){if(hitThisFrame)break;let hit=false;
@@ -1527,15 +1559,17 @@ else{soundPing();}}}
 for(let ci=0;ci<cups.length;ci++){const c=cups[ci];
 // All cups: identical trapezoid. Top=full slot width, bottom=narrower by inset
 const ins=8;
-let inCup=false;
+let inCup=false,hitX=c.x;
 if(b.y+BALL_RADIUS>c.y&&b.y<c.y+c.h){
   // Interpolate width: top(y)=full, bottom(y+h)=narrower
   const t=(b.y-c.y)/c.h;// 0=top(wide), 1=bottom(narrow)
-  const L=c.x+t*ins;
-  const R=c.x+c.w-t*ins;
-  if(b.x>L+2&&b.x<R-2)inCup=true;
+  const ex=conveyorOn?cupEffX(c,conveyorOffset):c.x;
+  // Test at effective x, and at the wrapped duplicate when the cup crosses the right seam
+  const xs=(conveyorOn&&ex+c.w>CANVAS_W-CUP_AREA_L)?[ex,ex-CUP_AREA_W]:[ex];
+  for(const x0 of xs){const L=x0+t*ins,R=x0+c.w-t*ins;
+    if(b.x>L+2&&b.x<R-2){inCup=true;hitX=x0;break;}}
 }
-if(inCup){b.a=false;const cx=c.x+c.w/2,cy=c.y+c.h/2;setCupShake(ci);
+if(inCup){b.a=false;const cx=hitX+c.w/2,cy=c.y+c.h/2;setCupShake(ci);
 if(b.tp==='gold'){const hd=c.fl;
 if(hd===0){spawnParticles(cx,cy,'#00BFFF',25);showToast(`🛡️ ${c.nm} IMMUNE!`,'#00BFFF');playTone(400,.1,'sine',.06);vibrate(50);timeline.push({tp:'immune',d:dropCount,t:`🛡️ ${c.nm} IMMUNE! (0→0)`,cl:'#00BFFF'});}
 else{c.fl=Math.max(0,c.fl-3);spawnParticles(cx,cy,'#FFD700',20);showToast(`🌟 ${c.nm} -3! (${hd}→${c.fl})`,'#FFD700');shakeScreen();soundGold();vibrate(100);timeline.push({tp:'gold',d:dropCount,t:`🌟 ${c.nm} -3! (${hd}→${c.fl})`,cl:'#FFD700'});}}
@@ -1607,7 +1641,7 @@ for(let b of balls){if(!b.a)continue;drawBall(c,b,BALL_RADIUS,isSlowmo);}
 for(let p of particles){c.globalAlpha=p.lf/p.ml;c.fillStyle=p.cl;c.beginPath();c.arc(p.x,p.y,p.r*(p.lf/p.ml),0,Math.PI*2);c.fill();}c.globalAlpha=1;
 // Cups
 const hostCupStates=cups.map(cp=>({fl:cp.fl,cl:cp.cl}));
-drawCupsFn(c,cups,hostCupStates,cupShakes,isSlowmo,8);
+drawCupsConveyor(c,cups,hostCupStates,cupShakes,isSlowmo,8,conveyorOn?conveyorOffset:0);
 if(megaActive)c.restore();}
 
 function animate(){updatePhysics();draw();if(!isEnded)animFrameId=requestAnimationFrame(animate);}
@@ -1703,7 +1737,8 @@ if(roomRef&&isHost){
     roomRef.child('layout').set({
       W:CANVAS_W,H:CANVAS_H,CUH:40,
       obstacles:obstacles.map(o=>({x:o.x,y:o.y,r:o.r,s:o.s,rt:o.rt,pt:o.pt})),
-      cups:cups.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h}))
+      cups:cups.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h})),
+      conveyor:conveyorOn?1:0
     });
   },200);
   // Re-start sync interval
@@ -2215,7 +2250,8 @@ async function startRoomGame(){
     roomRef.child('layout').set({
       W:CANVAS_W,H:CANVAS_H,CUH:40,
       obstacles:obstacles.map(o=>({x:o.x,y:o.y,r:o.r,s:o.s,rt:o.rt,pt:o.pt})),
-      cups:cups.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h}))
+      cups:cups.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h})),
+      conveyor:conveyorOn?1:0
     });
   }else{
     // Fallback: retry after init
@@ -2223,7 +2259,8 @@ async function startRoomGame(){
       roomRef.child('layout').set({
         W:CANVAS_W,H:CANVAS_H,CUH:40,
         obstacles:obstacles.map(o=>({x:o.x,y:o.y,r:o.r,s:o.s,rt:o.rt,pt:o.pt})),
-        cups:cups.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h}))
+        cups:cups.map(c=>({nm:c.nm,cl:c.cl,x:c.x,y:c.y,w:c.w,h:c.h})),
+      conveyor:conveyorOn?1:0
       });
     },300);
   }
@@ -2247,7 +2284,7 @@ function startRoomSync(){
       const mn3=isFinalBomb?Math.max(0,2-ms3):2;
       const rm2=Math.max(0,(maxBalls-dropCount)+mn3+balls.filter(b=>b.a).length);
       const lc2=cups.reduce((a,b)=>a.fl>b.fl?a:b,{fl:-1,nm:''});
-      roomRef.child('gameState').set({phase:isEnded?'result':isFinalBomb?'final':isSlowmo?'slowmo':'dropping',remaining:rm2,balls:bd2,cups:cd2,leader:lc2.nm,
+      roomRef.child('gameState').set({phase:isEnded?'result':isFinalBomb?'final':isSlowmo?'slowmo':'dropping',remaining:rm2,balls:bd2,cups:cd2,co:Math.round(conveyorOffset*10)/10,leader:lc2.nm,
         lastEvent:$('et').classList.contains('sh')?$('et').textContent:'',
         lastEventCl:$('et').classList.contains('sh')?$('et').style.color:'',
         redBorder:$('so').style.display==='block',
@@ -2264,6 +2301,7 @@ function startRoomSync(){
 
 // ═══ SPECTATOR MODE — Full Canvas ═══
 let specLayout=null,specBalls=[],specTargetBalls=[],specCups=[],specPhase='',specRemaining=0,specLeader='',specEvent='',specAnim=null;
+let specConvOn=false,specConvOffset=0,specConvTarget=null;
 let specWinner='',specWinnerScore=0,specResultShown=false;
 let specRedBorder=false,specCountdown=null,specShaking=false;
 let specResultPhase=0,specDramaFrame=0,specConfetti=[];
@@ -2287,7 +2325,7 @@ function showSpectator(){userNav=true;
     if(!roomRef)return;
     roomRef.child('layout').once('value').then(snap=>{
       specLayout=snap.val();
-      if(specLayout){cv.width=specLayout.W;cv.height=specLayout.H;startSpecCanvas();}
+      if(specLayout){specConvOn=!!specLayout.conveyor;specConvOffset=0;specConvTarget=null;cv.width=specLayout.W;cv.height=specLayout.H;startSpecCanvas();}
       else{const c=cv.getContext('2d');c.fillStyle='#1a1714';c.fillRect(0,0,500,700);c.font='16px "Noto Sans KR",sans-serif';c.textAlign='center';c.fillStyle='#9a8a7a';c.fillText('⏳ Waiting for host...',250,350);setTimeout(tryLoad,800);}
     });
   }
@@ -2462,9 +2500,16 @@ function startSpecCanvas(){
     drawFunnelLines(c,specLayout.cups,CANVAS_W,580,isSM);
     drawBallTrails(c,specBalls,BALL_RADIUS);
     specBalls.forEach(b=>{drawBall(c,b,BALL_RADIUS,isSlowPhase);});
-    // Cups
+    // Cups (with conveyor: predict locally at known speed, softly correct toward synced offset)
+    if(specConvOn){
+      specConvOffset=(specConvOffset+CONVEYOR_SPEED)%CUP_AREA_W;
+      if(specConvTarget!==null){
+        let d=((specConvTarget-specConvOffset)%CUP_AREA_W+CUP_AREA_W*1.5)%CUP_AREA_W-CUP_AREA_W/2;
+        specConvOffset=((specConvOffset+d*0.15)%CUP_AREA_W+CUP_AREA_W)%CUP_AREA_W;
+      }
+    }
     if(specLayout.cups){
-      drawCupsFn(c,specLayout.cups,specCups,null,isSM,ins);
+      drawCupsConveyor(c,specLayout.cups,specCups,null,isSM,ins,specConvOn?specConvOffset:0);
     }
     // Phase overlay, countdown, border, toast — all handled by HTML overlays in updateSpectator()
     // (uses same #cd, #so, #st2, #et as host for identical CSS animations)
@@ -2488,6 +2533,7 @@ function updateSpectator(gs){
   // Clear countdown when game is actively dropping
   if(gs.phase==='dropping'&&gs.balls&&gs.balls.length>0)specCountdown=null;
   if(gs.cups)specCups=gs.cups;
+  if(gs.co!==undefined)specConvTarget=gs.co;
   if(gs.winner){specWinner=gs.winner;specWinnerScore=gs.winnerScore||0;}
   
   // === USE HOST'S HTML OVERLAYS ===
@@ -2568,7 +2614,7 @@ function updateSpectator(gs){
     $('et').classList.remove('sh');$('et').style.display='';$('cd').style.display='none';
     const gbt=document.querySelector('.gbt');if(gbt)gbt.style.display='none';
     if(isNewGame&&roomRef){
-      roomRef.child('layout').once('value').then(snap=>{specLayout=snap.val();const cv=$('cv');if(specLayout){cv.width=specLayout.W;cv.height=specLayout.H;}cv.style.display='';startSpecCanvas();});
+      roomRef.child('layout').once('value').then(snap=>{specLayout=snap.val();const cv=$('cv');if(specLayout){specConvOn=!!specLayout.conveyor;specConvOffset=0;specConvTarget=null;cv.width=specLayout.W;cv.height=specLayout.H;}cv.style.display='';startSpecCanvas();});
     }
   }
   }catch(e){console.warn('updateSpec:',e);}
@@ -2973,7 +3019,7 @@ try{
   if(_savedSettings.nick&&$('hostNick')){$('hostNick').value=_savedSettings.nick;}
   if(_savedSettings.nick&&$('joinNick')){$('joinNick').value=_savedSettings.nick;}
   if(muted&&$('muB')){$('muB').textContent='🔇';}
-  renderPlayers();updateChaosDisplay();
+  renderPlayers();updateChaosDisplay();updateConveyorUI();
 }catch(e){console.warn('Init:',e);}
 // If invite URL, hide mainMenu immediately and show invite page
 if(window.location.search.includes('room=')){
